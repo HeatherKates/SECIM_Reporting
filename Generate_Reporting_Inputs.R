@@ -17,8 +17,6 @@ library(omu)
 library(metid)
 library(MetaboAnalystR)
 
-#8/15 10:12 am WHAT'S GOING ON WITH THIS IS THAT THE METADATA ARE AT THE BOTTOM OF THE DATA TABLES INSTEAD OF THE TOP. I AM TRYING TO FIGURE OUT WHEN THAT HAPPENS, IT MUST BE AT THE *VERY* END OF THE FUNCTION. 
-
 source("SECIM_Metabolomics.v12.2.R")
 source("Norm_Plots.v3.R")
 source("metid_SECIM-main/R/annotate_metabolites_mass_dataset.R")
