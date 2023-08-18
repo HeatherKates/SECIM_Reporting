@@ -1,4 +1,11 @@
-Generate_Report_Inputs <-function(){
+Generate_Report_Inputs <-function(client,samples_to_drop,mzmine_version,ReferenceLevel,Input,contrast_var){
+  #client="Dudeja.Serum"
+  #samples_to_drop=c("")
+  #mzmine_version=2
+  #ReferenceLevel="WT"
+  #Input <- "Client_Input_Sheets/Dudeja-Metabolomics_Serum.xlsx" 
+  #contrast_var="Class"
+
 library(dplyr)
 library(qs)
 library(lme4)
@@ -23,47 +30,24 @@ source("Norm_Plots.v3.R")
 source("metid_SECIM-main/R/annotate_metabolites_mass_dataset.R")
 source("metid_SECIM-main/R/mzIdentify_mass_dataset.R")
 
-client="Dudeja.Serum"
-samples_to_drop=c("")
-mzmine_version=2
-ReferenceLevel="WT"
-Input <- "Client_Input_Sheets/Dudeja-Metabolomics_Serum.xlsx" 
-contrast_var="Class"
-
 ##Mode Neg
-mode="Neg"
 
-#Version 4 is updated:
-
-#Step 1: Read in the mzmine peaktables and metadata
 ##RULES FOR INPUT DATA: 
 #No special characters in names or metadata except for "_" and ".". 
 #Names of samples are in columns in the peaktable and the string before the "p" or "n" must match the sample names in the metadata 
 metadata <- read_excel(Input,sheet="Sample.data")
-
-#Custom to create a new metadata column with requested sample groupings
-##metadata$custom_class <- metadata$Class
-# Apply the rule to update "custom_class" based on conditions
-##metadata$custom_class[metadata$Class == "COPD" | metadata$Class == "Control_MM"] <- "COPD_and_Control_MM"
-##metadata$Class <- NULL
-# Rename "custom_class" to "Class"
-##colnames(metadata)[colnames(metadata) == "custom_class"] <- "Class"
-
-#Positive input
-#peakdata <- read_excel(Input,sheet="Peaktable.pos")
-if(mode=="Pos"){
-peakdata <- read_excel(Input,sheet="Peaktable.pos")}else if (mode=="Neg"){
-peakdata <- read_excel(Input,sheet="Peaktable.neg")}
+peakdata <- read_excel(Input,sheet="Peaktable.neg")
 
 #################################################
 ######Standardize peak table columns#############
 #################################################
 if(mzmine_version==3){
   colnames(peakdata) <- c("id","rt","mz","internal_ID","spectral_ID",colnames(peakdata[6:ncol(peakdata)]))
-}else{
-  colnames(peakdata) <- c("id","mz","rt","compound",colnames(peakdata[5:ncol(peakdata)]))
-  peakdata <- peakdata %>% dplyr::relocate("rt",.before="mz")
-}
+  } else
+    {
+    colnames(peakdata) <- c("id","mz","rt","compound",colnames(peakdata[5:ncol(peakdata)]))
+    peakdata <- peakdata %>% dplyr::relocate("rt",.before="mz")
+    }
 #################################################
 ######Rules to process two columns of IDs########
 #################################################
@@ -71,39 +55,38 @@ if(mzmine_version==3){
 #NOTE: THE COLUMNS MAY NEED TO BE CONVERTED TO "TEXT" IN EXCEL TO AVOID BEING CONVERTED TO `NA` WHEN READ IN
 if("internal_ID" %in% colnames(peakdata)){
 #Create a column "confidence" that is empty
-peakdata$Confidence <- ""
-# Given a data frame with columns "A", "B", and "C"
-# Assuming the data frame is named "df"
+  peakdata$Confidence <- ""
+  # Given a data frame with columns "A", "B", and "C"
+  # Assuming the data frame is named "df"
 
-# 1) If column "B" is empty and column "A" is not empty, enter value "1" in column "C"
-peakdata$Confidence <- ifelse(is.na(peakdata$`spectral_ID`) & !is.na(peakdata$`internal_ID`), 1, peakdata$Confidence)
+  # 1) If column "B" is empty and column "A" is not empty, enter value "1" in column "C"
+  peakdata$Confidence <- ifelse(is.na(peakdata$`spectral_ID`) & !is.na(peakdata$`internal_ID`), 1, peakdata$Confidence)
 
-# 1B) If column B == column A, make column B NA
-#peakdata$`spectral_ID` <- ifelse(peakdata$`spectral_ID` == peakdata$`internal_ID`, NA, peakdata$`spectral_ID`)
+  # 1B) If column B == column A, make column B NA
+  #peakdata$`spectral_ID` <- ifelse(peakdata$`spectral_ID` == peakdata$`internal_ID`, NA, peakdata$`spectral_ID`)
 
-# 2) If column "B" is not empty and column "A" is empty, enter value "2" in column "C" and convert the text in column "B" to uppercase
-peakdata$Confidence <- ifelse(!is.na(peakdata$`spectral_ID`) & is.na(peakdata$`internal_ID`), 2, peakdata$Confidence)
-peakdata$`spectral_ID` <- ifelse(!is.na(peakdata$`spectral_ID`) & is.na(peakdata$`internal_ID`), toupper(peakdata$`spectral_ID`), peakdata$`spectral_ID`)
+  # 2) If column "B" is not empty and column "A" is empty, enter value "2" in column "C" and convert the text in column "B" to uppercase
+  peakdata$Confidence <- ifelse(!is.na(peakdata$`spectral_ID`) & is.na(peakdata$`internal_ID`), 2, peakdata$Confidence)
+  peakdata$`spectral_ID` <- ifelse(!is.na(peakdata$`spectral_ID`) & is.na(peakdata$`internal_ID`), toupper(peakdata$`spectral_ID`), peakdata$`spectral_ID`)
 
-# 3) If column "B" is not empty and column "A" is not empty, replace the text in column "B" with ""
-peakdata$`spectral_ID` <- ifelse(!is.na(peakdata$`spectral_ID`) & !is.na(peakdata$`internal_ID`), "", peakdata$`spectral_ID`)
+  # 3) If column "B" is not empty and column "A" is not empty, replace the text in column "B" with ""
+  peakdata$`spectral_ID` <- ifelse(!is.na(peakdata$`spectral_ID`) & !is.na(peakdata$`internal_ID`), "", peakdata$`spectral_ID`)
 
-# 4) Combine columns "A" and "B" into a single column named "row identify (main ID)" by populating that column with whichever column "A" or "B" is not empty for each row.
-peakdata$compound_name <- ifelse(!is.na(peakdata$`internal_ID`), peakdata$`internal_ID`, peakdata$`spectral_ID`)
+  # 4) Combine columns "A" and "B" into a single column named "row identify (main ID)" by populating that column with whichever column "A" or "B" is not empty for each row.
+  peakdata$compound_name <- ifelse(!is.na(peakdata$`internal_ID`), peakdata$`internal_ID`, peakdata$`spectral_ID`)
 
-# Remove the original columns "A" and "B"
-peakdata <- peakdata[, !(names(peakdata) %in% c("internal_ID", "spectral_ID"))]
+  # Remove the original columns "A" and "B"
+  peakdata <- peakdata[, !(names(peakdata) %in% c("internal_ID", "spectral_ID"))]
 
-#Move the compound_name to the position that is normal
-peakdata <- peakdata %>% relocate(compound_name,.after=mz)
+  #Move the compound_name to the position that is normal
+  peakdata <- peakdata %>% relocate(compound_name,.after=mz)
 
-#Save the confidence information to be added back after stats
-if(mode=="Neg"){
-Neg_pre_stats_conf_levels <- peakdata %>% select(`id`,Confidence)} else if (mode=="Pos"){Pos_pre_stats_conf_levels <- peakdata %>% select(`id`,Confidence)}
+  #Save the confidence information to be added back after stats
+  Neg_pre_stats_conf_levels <- peakdata %>% select(`id`,Confidence)
 
-#Remove the confidence column
-peakdata <- peakdata[, -which(names(peakdata) == "Confidence")]
-}
+  #Remove the confidence column
+  peakdata <- peakdata[, -which(names(peakdata) == "Confidence")]
+  }
 
 #################################################
 ######Steps to process column names #############
@@ -146,10 +129,10 @@ colnames(peakdata) <- gsub("-","_",colnames(peakdata))
 
 #Remove any rows with "adduct" in the fourth column
 if(mzmine_version==2){
-peakdata <- filter(peakdata,!grepl("adduct",compound))
-#Remove any rows with "Complex" in the fourth column
-peakdata <- filter(peakdata,!grepl("Complex",compound))
-}
+  peakdata <- filter(peakdata,!grepl("adduct",compound))
+  #Remove any rows with "Complex" in the fourth column
+  peakdata <- filter(peakdata,!grepl("Complex",compound))
+  }
 #################################################
 #################END#############################
 #################################################
@@ -165,7 +148,7 @@ metadata$Sample.Name <- gsub("-", "_",metadata$Sample.Name)
 
 #Custom: if needed, add an A to the beginning of reference groups - should phase this out by updating v10 to set reference group/custom contrasts even for pairwise=TRUE
 if(!is.null(ReferenceLevel)){
-metadata$Class <- gsub(ReferenceLevel,paste0("Zref_",ReferenceLevel),metadata$Class)
+    metadata$Class <- gsub(ReferenceLevel,paste0("Zref_",ReferenceLevel),metadata$Class)
 }
 
 if (length(samples_to_drop)>0){
@@ -204,45 +187,17 @@ dataset <- data
 #test_type="t.test";subset=list(list("GI_MB_TBI","GII_MB_Sham"),list("GI_CX_TBI","GII_CX_Sham"));lm_model=Metabolite~Class+(1|ID);emmeans_var=~Class;mode="Pos";metid_DB_file="kegg_ms1_database0.0.3.rda";client="Hendrich-Wang"
 #options for metid_DB are kegg_ms1_database0.0.3.rda,"hmdb_database0.0.3.rda,"bloodexposome_database1.0.rda"
 #Example of anova_formula=as.formula(paste("Metabolite ~", "Class","+","Error(ID)"))
-if(mode=="Pos"){
-pos.output <- SECIM_Metabolomics(
-  dataset=data,peakdata=peakdata,num_meta=1,original_data=data,contrast_var="Class",
-  subset=NULL,
-  anova_formula=as.formula(paste("id ~", "Class","+","Error(ID)")),lm_model=NULL,test_type="t.test",emmeans_var="Class",mode="Pos",
-                                 metid_DB_file="kegg_ms1_database0.0.3.rda",client=client)}else{
-                                   
-
 neg.output <- SECIM_Metabolomics(
   dataset=data,peakdata=peakdata,num_meta=1,original_data=data,contrast_var="Class",
   subset=NULL,
   anova_formula=as.formula(paste("id ~", "Class","+","Error(ID)")),lm_model=NULL,test_type="t.test",emmeans_var="Class",mode="Neg",
-  metid_DB_file="kegg_ms1_database0.0.3.rda",client=client)}
+  metid_DB_file="kegg_ms1_database0.0.3.rda",client=client)
 
-##Mode Pos
+#Positive mode
 
-mode="Pos"
-#Version 5 is updated: Put Neg and Pos sequentially to run all code
-#Version 4 is updated:
-
-#Step 1: Read in the mzmine peaktables and metadata
-##RULES FOR INPUT DATA: 
-#No special characters in names or metadata except for "_" and ".". 
-#Names of samples are in columns in the peaktable and the string before the "p" or "n" must match the sample names in the metadata 
 metadata <- read_excel(Input,sheet="Sample.data")
 
-#Custom to create a new metadata column with requested sample groupings
-##metadata$custom_class <- metadata$Class
-# Apply the rule to update "custom_class" based on conditions
-##metadata$custom_class[metadata$Class == "COPD" | metadata$Class == "Control_MM"] <- "COPD_and_Control_MM"
-##metadata$Class <- NULL
-# Rename "custom_class" to "Class"
-##colnames(metadata)[colnames(metadata) == "custom_class"] <- "Class"
-
-#Positive input
-#peakdata <- read_excel(Input,sheet="Peaktable.pos")
-if(mode=="Pos"){
-  peakdata <- read_excel(Input,sheet="Peaktable.pos")}else if (mode=="Neg"){
-    peakdata <- read_excel(Input,sheet="Peaktable.neg")}
+peakdata <- read_excel(Input,sheet="Peaktable.pos")
 
 #################################################
 ######Standardize peak table columns#############
@@ -287,8 +242,7 @@ if("internal_ID" %in% colnames(peakdata)){
   peakdata <- peakdata %>% relocate(compound_name,.after=mz)
   
   #Save the confidence information to be added back after stats
-  if(mode=="Neg"){
-    Neg_pre_stats_conf_levels <- peakdata %>% select(`id`,Confidence)} else if (mode=="Pos"){Pos_pre_stats_conf_levels <- peakdata %>% select(`id`,Confidence)}
+  Pos_pre_stats_conf_levels <- peakdata %>% select(`id`,Confidence)
   
   #Remove the confidence column
   peakdata <- peakdata[, -which(names(peakdata) == "Confidence")]
@@ -332,6 +286,7 @@ if (any(duplicated(colnames(peakdata)))) {
   warning(paste("Duplicate column colnames found and made unique:",
                 paste(duplicate_cols, collapse = ", ")))
 }
+
 #v10 Replace "-" with "_" in sample names because metaboanalyst will convert one and mess it up
 colnames(peakdata) <- gsub("-","_",colnames(peakdata))
 
@@ -341,7 +296,7 @@ if(mzmine_version==2){
   peakdata <- filter(peakdata,!grepl("adduct",compound))
   #Remove any rows with "Complex" in the fourth column
   peakdata <- filter(peakdata,!grepl("Complex",compound))
-}
+  }
 #################################################
 #################END#############################
 #################################################
@@ -358,11 +313,11 @@ metadata$Sample.Name <- gsub("-", "_",metadata$Sample.Name)
 #Custom: if needed, add an A to the beginning of reference groups - should phase this out by updating v10 to set reference group/custom contrasts even for pairwise=TRUE
 if(!is.null(ReferenceLevel)){
   metadata$Class <- gsub(ReferenceLevel,paste0("Zref_",ReferenceLevel),metadata$Class)
-}
+  }
 
 if (length(samples_to_drop)>0){
   metadata <- metadata %>% filter(!Sample.Name %in% samples_to_drop)
-}
+  }
 
 #################################################
 #################END#############################
@@ -394,21 +349,12 @@ dataset <- data
 #test_type="t.test";subset=list(list("GI_MB_TBI","GII_MB_Sham"),list("GI_CX_TBI","GII_CX_Sham"));lm_model=Metabolite~Class+(1|ID);emmeans_var=~Class;mode="Pos";metid_DB_file="kegg_ms1_database0.0.3.rda";client="Hendrich-Wang"
 #options for metid_DB are kegg_ms1_database0.0.3.rda,"hmdb_database0.0.3.rda,"bloodexposome_database1.0.rda"
 #Example of anova_formula=as.formula(paste("Metabolite ~", "Class","+","Error(ID)"))
-if(mode=="Pos"){
-  pos.output <- SECIM_Metabolomics(
+
+pos.output <- SECIM_Metabolomics(
     dataset=data,peakdata=peakdata,num_meta=1,original_data=data,contrast_var="Class",
     subset=NULL,
     anova_formula=as.formula(paste("id ~", "Class","+","Error(ID)")),lm_model=NULL,test_type="t.test",emmeans_var="Class",mode="Pos",
-    metid_DB_file="kegg_ms1_database0.0.3.rda",client=client)}else{
-      
-      
-      neg.output <- SECIM_Metabolomics(
-        dataset=data,peakdata=peakdata,num_meta=1,original_data=data,contrast_var="Class",
-        subset=NULL,
-        anova_formula=as.formula(paste("id ~", "Class","+","Error(ID)")),lm_model=NULL,test_type="t.test",emmeans_var="Class",mode="Neg",
-        metid_DB_file="kegg_ms1_database0.0.3.rda",client=client)}
-
-
+    metid_DB_file="kegg_ms1_database0.0.3.rda",client=client)
 
 #save.image(paste(client,"functionoutput.RDATA",sep="_"))
 #################################################
@@ -424,20 +370,21 @@ combined_results$temp.lc.Metabolite <- tolower(combined_results$compound)
 HP.KEGG.list <- combined_results %>% filter(Level=="1") %>% dplyr::select(KEGG) %>% unlist() %>% na.omit() #KEGG IDs that are in the data with high confidence
 combined_results <- combined_results %>% mutate(status=case_when(KEGG %in% HP.KEGG.list~"HP"))#A status of "HP" indicates that this KEGG has been identified with confidence level "1" for some peak in the table
 orig.combined_results <- combined_results #save for anova processing
-if("p.value" %in% colnames(combined_results)){
-#For cases when 1+ of the duplicate KEGG IDs has a confidence level "1", pick the one with conf level 1 (then sort by p-value)
-temp.HP.Keggs <- combined_results %>% filter(status=="HP") %>% arrange(KEGG,Level,p.value)%>% distinct(KEGG, .keep_all = TRUE)
-#For cases when 1+ of the duplicates does not have a confidence level "1", pick the best match and then the best p-value
-temp.notHP.Keggs <- combined_results %>% filter(is.na(status)) %>% filter(!is.na(KEGG)) %>% arrange(KEGG,plyr::desc(mz.match.score),p.value) %>% distinct(KEGG, .keep_all = TRUE)
 
-#For peaks with Compound.names but no KEGG IDs
-#For cases when 1+ of the duplicates has a confidence level "1"
-HP.names.list <- combined_results %>% filter(Level=="1") %>% dplyr::select(compound) %>% unlist() %>% na.omit() #compounds that are in the data with high confidence
-combined_results <- combined_results %>% mutate(status=case_when(compound %in% HP.names.list~"HP"))#A status of "HP" indicates that this KEGG has been identified with confidence level "1" for some peak in the table
-temp.HP.names <- combined_results %>% filter(status=="HP") %>% filter(is.na(KEGG)) %>% arrange(temp.lc.Metabolite,Level,p.value)%>% distinct(temp.lc.Metabolite, .keep_all = TRUE)
-#For cases when 1+ of the duplicates does not have a confidence level "1"
-temp.notHP.names <- combined_results %>% filter(is.na(status)) %>% arrange(temp.lc.Metabolite,plyr::desc(mz.match.score),p.value) %>% distinct(temp.lc.Metabolite, .keep_all = TRUE)
-}else{
+if("p.value" %in% colnames(combined_results)){
+  #For cases when 1+ of the duplicate KEGG IDs has a confidence level "1", pick the one with conf level 1 (then sort by p-value)
+  temp.HP.Keggs <- combined_results %>% filter(status=="HP") %>% arrange(KEGG,Level,p.value)%>% distinct(KEGG, .keep_all = TRUE)
+  #For cases when 1+ of the duplicates does not have a confidence level "1", pick the best match and then the best p-value
+  temp.notHP.Keggs <- combined_results %>% filter(is.na(status)) %>% filter(!is.na(KEGG)) %>% arrange(KEGG,plyr::desc(mz.match.score),p.value) %>% distinct(KEGG, .keep_all = TRUE)
+
+  #For peaks with Compound.names but no KEGG IDs
+  #For cases when 1+ of the duplicates has a confidence level "1"
+  HP.names.list <- combined_results %>% filter(Level=="1") %>% dplyr::select(compound) %>% unlist() %>% na.omit() #compounds that are in the data with high confidence
+  combined_results <- combined_results %>% mutate(status=case_when(compound %in% HP.names.list~"HP"))#A status of "HP" indicates that this KEGG has been identified with confidence level "1" for some peak in the table
+  temp.HP.names <- combined_results %>% filter(status=="HP") %>% filter(is.na(KEGG)) %>% arrange(temp.lc.Metabolite,Level,p.value)%>% distinct(temp.lc.Metabolite, .keep_all = TRUE)
+  #For cases when 1+ of the duplicates does not have a confidence level "1"
+  temp.notHP.names <- combined_results %>% filter(is.na(status)) %>% arrange(temp.lc.Metabolite,plyr::desc(mz.match.score),p.value) %>% distinct(temp.lc.Metabolite, .keep_all = TRUE)
+  }else{
   #For cases when 1+ of the duplicate KEGG IDs has a confidence level "1", pick the one with conf level 1 (then sort by p-value)
   temp.HP.Keggs <- combined_results %>% filter(status=="HP") %>% arrange(KEGG,Level,adj.p.value) %>% distinct(KEGG, .keep_all = TRUE)
   #For cases when 1+ of the duplicates does not have a confidence level "1", pick the best match and then the best p-value
@@ -448,7 +395,7 @@ temp.notHP.names <- combined_results %>% filter(is.na(status)) %>% arrange(temp.
   temp.HP.names <- combined_results %>% filter(status=="HP") %>% filter(is.na(KEGG)) %>% arrange(temp.lc.Metabolite,Level,adj.p.value)%>% distinct(temp.lc.Metabolite, .keep_all = TRUE)
   #For cases when 1+ of the duplicates does not have a confidence level "1"
   temp.notHP.names <- combined_results %>% filter(is.na(status)) %>% arrange(temp.lc.Metabolite,plyr::desc(mz.match.score),adj.p.value) %>% distinct(temp.lc.Metabolite, .keep_all = TRUE)
-}
+  }
 #Put them back together
 combined_results <- rbind(temp.HP.Keggs,temp.notHP.Keggs,temp.HP.names,temp.notHP.names) %>% dplyr::select(-status)%>% dplyr::select(-temp.lc.Metabolite) %>% distinct()
 combined_results <- combined_results %>% mutate(Confidence=case_when(Level==3~"LOW CONFIDENCE ID",.default=""))
@@ -532,29 +479,29 @@ Client_Data_Download[[i]] <- Client_Data_Download[[i]][,!empty_columns]
 ###########################################################################
 #Run this if there is another annotation in the mzmine output
 if(exists("Pos_pre_stats_conf_levels")){
-Pos_pre_stats_conf_levels$Mode <- "Pos"
-Neg_pre_stats_conf_levels$Mode <- "Neg"
-Pre_stats_conf <- rbind(Pos_pre_stats_conf_levels,Neg_pre_stats_conf_levels)
-Pre_stats_conf$id = as.character(Pre_stats_conf$id)
-# Loop through each row in df1
-for(n in 1:length(Client_Data_Download)){
-for (i in 1:nrow(Pre_stats_conf)) {
-  # Get the row and mode values from Pre_stats_conf
-  row_value <- Pre_stats_conf$id[i]
-  mode_value <- Pre_stats_conf$Mode[i]
+  Pos_pre_stats_conf_levels$Mode <- "Pos"
+  Neg_pre_stats_conf_levels$Mode <- "Neg"
+  Pre_stats_conf <- rbind(Pos_pre_stats_conf_levels,Neg_pre_stats_conf_levels)
+  Pre_stats_conf$id = as.character(Pre_stats_conf$id)
+  # Loop through each row in df1
+  for(n in 1:length(Client_Data_Download)){
+    for (i in 1:nrow(Pre_stats_conf)) {
+      # Get the row and mode values from Pre_stats_conf
+      row_value <- Pre_stats_conf$id[i]
+      mode_value <- Pre_stats_conf$Mode[i]
   
-  # Find the matching row in Client_Data_Download[[i]]
-  matching_row <- Client_Data_Download[[n]]$id == row_value & Client_Data_Download[[n]]$mode == mode_value
+      # Find the matching row in Client_Data_Download[[i]]
+      matching_row <- Client_Data_Download[[n]]$id == row_value & Client_Data_Download[[n]]$mode == mode_value
   
-  # Check if there is a match in Client_Data_Download[[i]] and Pre_stats_conf's confidence value is not an empty string
-  if (any(matching_row) && Pre_stats_conf$Confidence[i] != "") {
-    # Update the 'Level' value in Client_Data_Download[[i]] with the corresponding 'Confidence' value from Pre_stats_conf
-    Client_Data_Download[[n]]$Level[matching_row] <- Pre_stats_conf$Confidence[i]
+      # Check if there is a match in Client_Data_Download[[i]] and Pre_stats_conf's confidence value is not an empty string
+      if (any(matching_row) && Pre_stats_conf$Confidence[i] != "") {
+        # Update the 'Level' value in Client_Data_Download[[i]] with the corresponding 'Confidence' value from Pre_stats_conf
+        Client_Data_Download[[n]]$Level[matching_row] <- Pre_stats_conf$Confidence[i]
+      }
   }
 }
 }
+  return(Client_Data_Download)
 }
-return(Client_Data_Download)
-}
-
 #save(file=paste(client,".ReportingInput",Sys.Date(),".RDATA",sep=""),Client_Data_Download)
+
