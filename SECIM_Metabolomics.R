@@ -11,13 +11,16 @@
 #emmeans_var=~Class
 #emmeans_contrasts=ALL or like: `list(c("Level1", "Level2"), c("Level3", "Level4"))`
 #I just need to find out why there is an "X" before the sample names in the dataset 4/20 4:32
-SECIM_Metabolomics <-function(datasetset,peakdata,num_meta,original_data,contrast_var,anova_formula,lm_model,
-                              test_type,subset,emmeans_var,mode,metid_DB_file,client){
+SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_var,anova_formula,lm_model,
+                              test_type,subset,emmeans_var,mode,metid_DB_file,client,metadata){
+  print(contrast_var)
 
   # Store the names of objects in the global environment before loading the file
   before <- ls()
+  print(ls)
   load(metid_DB_file)
   metid_DB <- setdiff(ls(), before)[2]
+  print(metid_DB)
   
   
 
@@ -118,23 +121,23 @@ SECIM_Metabolomics <-function(datasetset,peakdata,num_meta,original_data,contras
       temp$Metabolite <- as.numeric(temp$Metabolite)
       #v11 Adds row ID to temp
       temp$rowID <- data.final$id[i][length(data.final$id[i])]
-      exp1 <- expr(Metabolite ~ !!ensym(contrast_var))
+      exp1 <- expr(Metabolite ~ !!ensym(contrast_var)) #changed from !!ensym to ensym
       if(is.null(subset)){
-      ttest.res <- tidy(t.test(formula = eval(exp1), data = temp))
-      ttest.res$contrast <- paste(levels(as.factor(temp[[contrast_var]]))[1],"-",levels(as.factor(temp[[contrast_var]]))[2])
-      ttest.res
-      }else{
-        #subset=list(list("GI_MB_TBI","GII_MB_Sham"),list("GI_CX_TBI","GII_CX_Sham"))
-      ttest.res=list()
-      for(n in 1:length(subset)){
-      ttest.res[[n]] <- tidy(t.test(formula = eval(exp1), data = temp %>% filter(Class %in% subset[[n]])))
-      ttest.res[[n]]$contrast <- paste(subset[[n]][1],"-",subset[[n]][2])
-      }
-      ttest.res <- do.call("rbind",ttest.res)
-      ttest.res$id <- temp$rowID[[1]]
-      ttest.res 
-      }
-    }
+        ttest.res <- tidy(t.test(formula = eval(exp1), data = temp))
+        ttest.res$contrast <- paste(levels(as.factor(temp[[contrast_var]]))[1],"-",levels(as.factor(temp[[contrast_var]]))[2])
+        ttest.res
+        }else{
+          #subset=list(list("GI_MB_TBI","GII_MB_Sham"),list("GI_CX_TBI","GII_CX_Sham"))
+          ttest.res=list()
+          for(n in 1:length(subset)){
+          ttest.res[[n]] <- tidy(t.test(formula = eval(exp1), data = temp %>% filter(Class %in% subset[[n]])))
+          ttest.res[[n]]$contrast <- paste(subset[[n]][1],"-",subset[[n]][2])
+          }
+            ttest.res <- do.call("rbind",ttest.res)
+            ttest.res$id <- temp$rowID[[1]]
+            ttest.res 
+          }
+        }
     ttest.results <- do.call("rbind", ttest)
     if(is.null(subset)){
     ttest.results$id <- data.final$id[(num_meta+1):nrow(data.final)]
@@ -330,9 +333,9 @@ SECIM_Metabolomics <-function(datasetset,peakdata,num_meta,original_data,contras
   
   #Step 12: KEGG ID of metabolites in the peaktable
   if(mode=="Pos"){
-  KEGG.compound <- read.csv("Positive_Garrett_MetaboliteStd_Library_RP_edited2022-2-4TJG_KEGG-ALL caps.csv")%>% distinct()
+  KEGG.compound <- read.csv("/blue/timgarrett/hkates/Garrett/Reporting/Positive_Garrett_MetaboliteStd_Library_RP_edited2022-2-4TJG_KEGG-ALL caps.csv")%>% distinct()
   }else if (mode=="Neg"){
-  KEGG.compound <- read.csv("Negative_Garrett_MetaboliteStd_Library_RP_edited211001JGC_KEGG.csv") %>% distinct()
+  KEGG.compound <- read.csv("/blue/timgarrett/hkates/Garrett/Reporting/Negative_Garrett_MetaboliteStd_Library_RP_edited211001JGC_KEGG.csv") %>% distinct()
   }
   #KEGG.compound$name <- gsub(" $","",KEGG.compound$name)
   #KEGG.compound <- KEGG.compound %>% dplyr::select(c("name","KEGG"))
@@ -430,24 +433,6 @@ SECIM_Metabolomics <-function(datasetset,peakdata,num_meta,original_data,contras
     
   }
   return(outputs_list)
-  
-  #Remove files created and used by this function
-  # Set the working directory
-  setwd("/blue/timgarrett/hkates/Garrett/Reporting/")
-  
-  # Define the regular expression patterns and specific full names to match
-  regex_patterns <- c(".*\\.qs$", ".*metab\\.in\\.csv$",".*metab\\.meta\\.in\\.csv$")  # Match files ending with ".qs" or "metab.in.csv"
-  full_names <- c("data_prefilter_iqr.csv")  # Specific full names
-  
-  # Get the list of files in the directory
-  files <- list.files()
-  
-  # Filter and remove the files matching the regular expression patterns
-  to_remove <- files[grepl(regex_patterns[1], files) | grepl(regex_patterns[2], files)]
-  file.remove(to_remove)
-  
-  # Remove the specific full names
-  file.remove(full_names)
 }
 #pos.output <- outputs_list
 #saveRDS(object = pos.output,file="Sumners.posoutput.5182023.Rdata")

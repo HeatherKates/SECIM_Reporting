@@ -1,5 +1,5 @@
-Generate_Report_Inputs <-function(client,samples_to_drop,mzmine_version,ReferenceLevel,Input,contrast_var,
-                                  num_meta,anova_formula,test_type,metid_DB_file){
+Client_Data_Download <- Generate_Report_Inputs <-function(client,samples_to_drop=NULL,mzmine_version,ReferenceLevel=NULL,Input,contrast_var,
+                                  num_meta,anova_formula=NULL,lm_model=NULL,test_type,subset=NULL,metid_DB_file){
   #client="Dudeja.Serum"
   #samples_to_drop=c("")
   #mzmine_version=2
@@ -34,8 +34,8 @@ library(MetaboAnalystR)
 
 source("SECIM_Metabolomics.R")
 source("Norm_Plots.R")
-source("metid_SECIM-main/R/annotate_metabolites_mass_dataset.R")
-source("metid_SECIM-main/R/mzIdentify_mass_dataset.R")
+source("annotate_metabolites_mass_dataset.R")
+source("mzIdentify_mass_dataset.R")
 
 ##Mode Neg
 
@@ -194,11 +194,11 @@ dataset <- data
 #test_type="t.test";subset=list(list("GI_MB_TBI","GII_MB_Sham"),list("GI_CX_TBI","GII_CX_Sham"));lm_model=Metabolite~Class+(1|ID);emmeans_var=~Class;mode="Pos";metid_DB_file="kegg_ms1_database0.0.3.rda";client="Hendrich-Wang"
 #options for metid_DB are kegg_ms1_database0.0.3.rda,"hmdb_database0.0.3.rda,"bloodexposome_database1.0.rda"
 #Example of anova_formula=as.formula(paste("Metabolite ~", "Class","+","Error(ID)"))
-neg.output <- SECIM_Metabolomics(
-  dataset=data,peakdata=peakdata,num_meta=num_meta,original_data=data,contrast_var=contrast_var,
+#debug(SECIM_Metabolomics)
+neg.output <- SECIM_Metabolomics(dataset=data,peakdata=peakdata,num_meta=num_meta,original_data=data,contrast_var=contrast_var,
   subset=subset,
   anova_formula=anova_formula,lm_model=lm_model,test_type=test_type,emmeans_var=contrast_var,mode="Neg",
-  metid_DB_file=metid_DB_file,client=client)
+  metid_DB_file=metid_DB_file,client=client,metadata=metadata)
 
 #Positive mode
 
@@ -361,7 +361,7 @@ pos.output <- SECIM_Metabolomics(
   dataset=data,peakdata=peakdata,num_meta=num_meta,original_data=data,contrast_var=contrast_var,
   subset=subset,
   anova_formula=anova_formula,lm_model=lm_model,test_type=test_type,emmeans_var=contrast_var,mode="Pos",
-  metid_DB_file=metid_DB_file,client=client)
+  metid_DB_file=metid_DB_file,client=client,metadata=metadata)
 
 #save.image(paste(client,"functionoutput.RDATA",sep="_"))
 #################################################

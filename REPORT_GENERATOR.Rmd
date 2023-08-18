@@ -25,7 +25,7 @@ knitr::opts_chunk$set(
 ```
 
 ```{r include=FALSE,message=FALSE,warning=FALSE}
-#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
+#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
 library(SummarizedExperiment)
 library(MetaboDiff)
 #library(cowplot)
