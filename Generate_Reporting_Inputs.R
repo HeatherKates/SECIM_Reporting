@@ -1,3 +1,4 @@
+Generate_Report_Inputs <-function(){
 library(dplyr)
 library(qs)
 library(lme4)
@@ -553,5 +554,7 @@ for (i in 1:nrow(Pre_stats_conf)) {
 }
 }
 }
+return(Client_Data_Download)
+}
 
-save(file=paste(client,".ReportingInput",Sys.Date(),".RDATA",sep=""),Client_Data_Download)
+#save(file=paste(client,".ReportingInput",Sys.Date(),".RDATA",sep=""),Client_Data_Download)
