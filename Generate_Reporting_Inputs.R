@@ -1,10 +1,17 @@
-Generate_Report_Inputs <-function(client,samples_to_drop,mzmine_version,ReferenceLevel,Input,contrast_var){
+Generate_Report_Inputs <-function(client,samples_to_drop,mzmine_version,ReferenceLevel,Input,contrast_var,
+                                  num_meta,anova_formula,test_type,metid_DB_file,client){
   #client="Dudeja.Serum"
   #samples_to_drop=c("")
   #mzmine_version=2
   #ReferenceLevel="WT"
   #Input <- "Client_Input_Sheets/Dudeja-Metabolomics_Serum.xlsx" 
   #contrast_var="Class"
+  
+  #For stats subfunction
+  #num_meta=1
+  #subset=NULL,
+  #anova_formula=as.formula(paste("id ~", "Class","+","Error(ID)")),lm_model=NULL,test_type="t.test",
+  #metid_DB_file="kegg_ms1_database0.0.3.rda"
 
 library(dplyr)
 library(qs)
@@ -188,10 +195,10 @@ dataset <- data
 #options for metid_DB are kegg_ms1_database0.0.3.rda,"hmdb_database0.0.3.rda,"bloodexposome_database1.0.rda"
 #Example of anova_formula=as.formula(paste("Metabolite ~", "Class","+","Error(ID)"))
 neg.output <- SECIM_Metabolomics(
-  dataset=data,peakdata=peakdata,num_meta=1,original_data=data,contrast_var="Class",
-  subset=NULL,
-  anova_formula=as.formula(paste("id ~", "Class","+","Error(ID)")),lm_model=NULL,test_type="t.test",emmeans_var="Class",mode="Neg",
-  metid_DB_file="kegg_ms1_database0.0.3.rda",client=client)
+  dataset=data,peakdata=peakdata,num_meta=num_meta,original_data=data,contrast_var=contrast_var,
+  subset=subset,
+  anova_formula=anova_formula,lm_model=lm_model,test_type=test_type,emmeans_var=contrast_var,mode="Neg",
+  metid_DB_file=metid_DB_file,client=client)
 
 #Positive mode
 
@@ -351,10 +358,10 @@ dataset <- data
 #Example of anova_formula=as.formula(paste("Metabolite ~", "Class","+","Error(ID)"))
 
 pos.output <- SECIM_Metabolomics(
-    dataset=data,peakdata=peakdata,num_meta=1,original_data=data,contrast_var="Class",
-    subset=NULL,
-    anova_formula=as.formula(paste("id ~", "Class","+","Error(ID)")),lm_model=NULL,test_type="t.test",emmeans_var="Class",mode="Pos",
-    metid_DB_file="kegg_ms1_database0.0.3.rda",client=client)
+  dataset=data,peakdata=peakdata,num_meta=num_meta,original_data=data,contrast_var=contrast_var,
+  subset=subset,
+  anova_formula=anova_formula,lm_model=lm_model,test_type=test_type,emmeans_var=contrast_var,mode="Pos",
+  metid_DB_file=metid_DB_file,client=client)
 
 #save.image(paste(client,"functionoutput.RDATA",sep="_"))
 #################################################
