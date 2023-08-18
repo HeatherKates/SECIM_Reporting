@@ -1,5 +1,5 @@
 Generate_Report_Inputs <-function(client,samples_to_drop,mzmine_version,ReferenceLevel,Input,contrast_var,
-                                  num_meta,anova_formula,test_type,metid_DB_file,client){
+                                  num_meta,anova_formula,test_type,metid_DB_file){
   #client="Dudeja.Serum"
   #samples_to_drop=c("")
   #mzmine_version=2
@@ -32,8 +32,8 @@ library(omu)
 library(metid)
 library(MetaboAnalystR)
 
-source("SECIM_Metabolomics.v12.2.R")
-source("Norm_Plots.v3.R")
+source("SECIM_Metabolomics.R")
+source("Norm_Plots.R")
 source("metid_SECIM-main/R/annotate_metabolites_mass_dataset.R")
 source("metid_SECIM-main/R/mzIdentify_mass_dataset.R")
 
