@@ -118,21 +118,21 @@ class_order <- levels(as.factor(Client_Data_Download[["metadata"]]$Class))
 
 # Project Summary
 
-PI: `PI`
+PI: `r PI`
 
-Institution: `Institution`
+Institution: `r Institution`
 
-Department: `Department`
+Department: `r Department`
 
-Study Contact: `StudyContact`
+Study Contact: `r StudyContact`
 
-Project: `Project`
+Project: `r Project`
 
-Study Title: `StudyTitle`
+Study Title: `r StudyTitle`
 
-Hypothesis/Goal:  `Hypothesis`
+Hypothesis/Goal:  `r Hypothesis`
 
-Study Summary: `StudySummary`
+Study Summary: `r StudySummary`
 
 ## Sample Information</span>
 
@@ -817,308 +817,419 @@ Select areas of within this subnetwork to view and export clusters of interest.
 load("KEGG_network.RDATA")
 ```
 
-```{r,network_up,eval=TRUE,warning=FALSE,message=FALSE,fig.dim=c(10,10)}
+```{r,network,eval=TRUE,warning=FALSE,message=FALSE,fig.dim=c(20,20)}
 upnetworklist = list()
 downnetworklist = list()
-  for (i in 1:length(contrasts)){
-rm(up.plot)
-analysis.up <- NULL
-#Find the metabolites are significantly changed between cluster-SDHx samples and cluster-one samples
-sig.up.KEGGs <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>%
-                                  filter(log2FC > 0) %>% 
-                                  dplyr::select(KEGG) %>% filter(!KEGG=="")
-###Up
-if (nrow(sig.up.KEGGs)>0) {
-tryCatch({
-  analysis.up <- enrich(
-  compounds = sig.up.KEGGs$KEGG,
-  data = fella.data,
-  method = "diffusion",
-  approx = "normality")},error=function(cond) {
-            message("Error")
-            message("Here's the original error message:")
-            message(cond)
-            # Choose a return value in case of error
-            return(NA)
-        })}
 
-if (!is.null(analysis.up)) {
-#extract the sub-network 
-up.graph <- generateResultsGraph(
-    object = analysis.up,
-    data = fella.data,
-    method = "diffusion",
-    thresholdConnectedComponent = 0.05,
-    threshold= 0.05,
-    nlimit=250)
-if(length(up.graph)>0){
-
-vs <- V(up.graph) #Get node list - this has names
-es <- as.data.frame(get.edgelist(up.graph)) # Get edgelist
-#This has the names and whether it was input
-node.data<-get.data.frame(up.graph,what="vertices") # Get node attribute dataframe
-#Add shape data
-node.data$input <- as.character(node.data$input)
-node.data <- node.data %>%
-  mutate(com = case_when(
-    endsWith(input, "TRUE") ~ "6",
-    TRUE ~ as.character(com)
-    ))
-node.data <- node.data %>%
-  mutate(input = case_when(
-    endsWith(input, "TRUE") ~ "Input",
-    endsWith(input, "FALSE") ~ "",
-    ))
-node.data$com <- stri_replace_all_regex(node.data$com,pattern=as.character(c(1:6)),replacement=c("pathway","module","enzyme","reaction","compound","Significantly changed compound"),vectorize=FALSE)
-Nv <- length(vs) #number of nodes
-Ne <- length(es[1]$V1) #number of edges
-
-#Coordinates for nodes
-L <- layout.fruchterman.reingold(up.graph)
-Xn <- L[,1]
-Yn <- L[,2]
-
-#Add KEGG names as attribute to graph
-#Merge the vs$names with the KEGG_map df
-KEGG_map <- readRDS("KEGG_map.df.RData")
-vs.names <- data.frame(vs$name)
-vs.names$num <- as.numeric(rownames(vs.names))
-vs.names.KEGG <- merge(vs.names,KEGG_map,by.x="vs.name",by.y="V1",all.x=TRUE)
-vs.names.KEGG <- vs.names.KEGG[order(vs.names.KEGG$num), ]
-
-#Add confidence flag
-vs.names.KEGG.confidence <- data.frame(Client_Data_Download[["report_results"]]  %>% filter(contrast==contrast[[i]]) %>% select("KEGG","Level") %>% filter(!KEGG=="") %>% distinct())
-vs.names.KEGG.confidence <- merge(vs.names.KEGG,vs.names.KEGG.confidence,by.x="vs.name",by.y="KEGG")
-#Recode confidence
-vs.names.KEGG.confidence <- vs.names.KEGG.confidence %>% mutate(Level=case_when(Level==1~"High Confidence ID",.default=as.character(Level)))
-vs.names.KEGG.confidence <- vs.names.KEGG.confidence %>% mutate(Level=case_when(Level==3~"Low Confidence ID",.default=as.character(Level)))
-vs.names.KEGG.confidence$report.results.Level <- paste(vs.names.KEGG.confidence$V2,vs.names.KEGG.confidence$Level,sep=";")
-#################
-#################
-#v 3.1 A temporary solution because for some reason there were still a few duplicate KEGGs in Generate_Reporting_Inputs.v4.1
-#This assumes that each duplicated KEGG has one high confidence and one low confidence (and in this case they all did, maybe that is a key to why these were missed by the de-duplication code)
-vs.names.KEGG.confidence.2 <- vs.names.KEGG.confidence %>% filter(!vs.name %in% vs.names.KEGG.confidence[duplicated(vs.names.KEGG.confidence$vs.name),]$vs.name) 
-vs.names.KEGG.confidence <- rbind(vs.names.KEGG.confidence.2,vs.names.KEGG.confidence %>% filter(vs.name %in% vs.names.KEGG.confidence[duplicated(vs.names.KEGG.confidence$vs.name),]$vs.name) %>% filter(Level=="High Confidence ID"))
-#################
-#################
-vs.names.KEGG <- merge(vs.names.KEGG,vs.names.KEGG.confidence,all.x=TRUE)
-
-
-vs.names.KEGG <- vs.names.KEGG %>% mutate(V2=case_when(!is.na(report.results.Level)~report.results.Level,.default=V2)) %>% dplyr::select(-report.results.Level)
-vs.names.KEGG <- vs.names.KEGG[order(vs.names.KEGG$num), ]
-
-
-#add linebreaks for long descriptions (hovertext) 
-vs.names.KEGG$V2 <- gsub(";","\n",vs.names.KEGG$V2)
-
-#Creates the nodes (plots the points)
-network <- plot_ly(x = ~Xn, y = ~Yn, #Node points
-                   mode = "markers", 
-                   text = vs.names.KEGG$vs.name, 
-                   hoverinfo = "text",
-                   hovertext = vs.names.KEGG$V2,
-                   color =as.factor(node.data$com),
-                   colors=c(brewer.pal(5,"Dark2"),"red"),
-                   symbol = ~node.data$input, symbols = c("circle","square")
-                   )
-network <- network %>% add_text(x = ~Xn, y = ~Yn,
-                  text = vs.names.KEGG$vs.name)
-
-#Create edges
-edge_shapes <- list()
-names(Xn) <- names(vs)
-names(Yn) <- names(vs)
-for(j in 1:Ne) {
-  v0 <- as.character(es[j,]$V1)
-  v1 <- as.character(es[j,]$V2)
+for (i in 1:length(contrasts)){
+  assign(paste0("analysis.up", i, "up"),NULL)
+  #Find the metabolites are significantly changed between cluster-SDHx samples and cluster-one samples
+  assign(paste0("sig.up.KEGGs", i, "up"),Client_Data_Download[["report_results"]] 
+         %>% filter(contrast==contrasts[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>%
+           filter(log2FC > 0) %>% 
+           dplyr::select(KEGG) %>% filter(!KEGG==""))
   
-  edge_shape = list(
-    type = "line",
-    line = list(color = "red", width = 0.3),
-    x0 = Xn[v0],
-    y0 = Yn[v0],
-    x1 = Xn[v1],
-    y1 = Yn[v1]
-  )
-  
-  edge_shapes[[j]] <- edge_shape
+
+if (nrow(get(paste0("sig.up.KEGGs", i, "up"))) > 0) {
+  tryCatch({
+    assign(paste0("analysis.up", i, "up"), enrich(
+      compounds = get(paste0("sig.up.KEGGs", i, "up"))$KEGG,
+      data = fella.data,
+      method = "diffusion",
+      approx = "normality"
+    ))
+  }, error = function(cond) {
+    message("Error")
+    message("Here's the original error message:")
+    message(cond)
+    # Choose a return value in case of error
+    return(NA)
+  })
 }
 
-axis <- list(title = "", showgrid = FALSE, 
-             showticklabels = FALSE, zeroline = FALSE)
+  
+  if (!is.null(get(paste0("analysis.up", i, "up")))) {
+    #extract the sub-network 
+    assign(paste0("up.graph", i, "up"),generateResultsGraph(
+      object = get(paste0("analysis.up", i, "up")),
+      data = fella.data,
+      method = "diffusion",
+      thresholdConnectedComponent = 0.05,
+      threshold= 0.05,
+      nlimit=250))
+  }
+  
+  if(length(get(paste0("up.graph", i, "up")))>0) {
+    
+    assign(paste0("vs", i, "up"),V(get(paste0("up.graph", i, "up")))) #Get node list - this has names
+    assign(paste0("es", i, "up"),as.data.frame(get.edgelist(get(paste0("up.graph", i, "up"))))) # Get edgelist
+    #This has the names and whether it was input
+    assign(paste0("node.data", i, "up"),get.data.frame(get(paste0("up.graph", i, "up")),what="vertices")) # Get node attribute dataframe
+    
+    #Add shape data
+assign(paste0("node.data", i, "up"), get(paste0("node.data", i, "up")) %>%
+  mutate(input = as.character(input)))
 
-#assign(x = paste("p2",i,sep="_"),
-up.plot <- layout(
-  network,
-   title= paste("KEGG subnetwork for known metabolites significantly more abundant in\n",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
-                            str_split(contrasts[[i]],pattern="-")[[1]][2]),
-  shapes = edge_shapes,
-  xaxis = axis,
-  yaxis = axis,
-  showlegend=TRUE)
+    
+    assign(paste0("node.data", i, "up"),get(paste0("node.data", i, "up")) %>%
+             mutate(com = case_when(
+               endsWith(input, "TRUE") ~ "6",
+               TRUE ~ as.character(com)
+             )))
+    assign(paste0("node.data", i, "up"),get(paste0("node.data", i, "up")) %>%
+             mutate(input = case_when(
+               endsWith(input, "TRUE") ~ "Input",
+               endsWith(input, "FALSE") ~ "",
+             )))
 
-}} else {
-cat(paste("No KEGG subnetwork found for metabolites significantly more abundant in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
-                            str_split(contrasts[[i]],pattern="-")[[1]][2]))}
+    assign(
+      paste0("node.data", i, "up"),
+      get(paste0("node.data", i, "up")) %>%
+        dplyr::mutate_at(vars(com), ~ stri_replace_all_regex(., pattern = as.character(c(1:6)), replacement = c("pathway", "module", "enzyme", "reaction", "compound", "Significantly changed compound"), vectorize = FALSE))
+)
+
+    
+    assign(paste0("Nv", i, "up"),length(get(paste0("vs", i, "up")))) #number of nodes
+    assign(paste0("Ne", i, "up"), length(get(paste0("es", i, "up"))[[1]])) # number of edges
+    
+    
+    #Coordinates for nodes
+    assign(paste0("L", i, "up"),layout.fruchterman.reingold(get(paste0("up.graph",i,"up"))))
+    assign(paste0("Xn", i, "up"),get(paste0("L", i, "up"))[,1])
+    assign(paste0("Yn", i, "up"),get(paste0("L", i, "up"))[,2])
+    
+    #Add KEGG names as attribute to graph
+    #Merge the vs$names with the KEGG_map df
+    KEGG_map <- readRDS("KEGG_map.df.RData")
+    assign(paste0("vs.names", i, "up"),data.frame(get(paste0("vs", i, "up"))$name))
+    #Previously this was accidentally using num from the heatmap. Not sure what it was doing. Try without. 08/21
+    assign(paste0("vs.names", i, "up"), get(paste0("vs.names", i, "up")) %>%
+     mutate(num = as.numeric(row.names(get(paste0("vs.names", i, "up"))))))
+    setnames(get(paste0("vs.names", i, "up")), c("vs.name","num"))
+    assign(paste0("vs.names.KEGG", i, "up"),merge(get(paste0("vs.names", i, "up")),KEGG_map,by.x="vs.name",by.y="V1",all.x=TRUE))
+    assign(paste0("vs.names.KEGG", i, "up"), get(paste0("vs.names.KEGG", i, "up"))[order(get(paste0("vs.names.KEGG", i, "up"))$num), ])
+                                               
+    #Add confidence flag
+    assign(paste0("vs.names.KEGG.confidence", i, "up"),
+    data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% 
+    select("KEGG","Level") %>% filter(!KEGG=="") %>% distinct()))
+                                               
+    assign(paste0("vs.names.KEGG.confidence", i, "up"),
+    merge(get(paste0("vs.names.KEGG", i, "up")),get(paste0("vs.names.KEGG.confidence", i, "up")),by.x="vs.name",by.y="KEGG"))
+                                               
+    #Recode confidence
+    assign(paste0("vs.names.KEGG.confidence", i, "up"),
+    get(paste0("vs.names.KEGG.confidence", i, "up")) %>% 
+    mutate(Level=case_when(Level==1~"High Confidence ID",.default=as.character(Level))))
+    
+    assign(paste0("vs.names.KEGG.confidence", i, "up"),
+    get(paste0("vs.names.KEGG.confidence", i, "up")) %>% 
+    mutate(Level=case_when(Level==3~"Low Confidence ID",.default=as.character(Level))))
+                                               
+    # Get the dataframe
+    df <- get(paste0("vs.names.KEGG.confidence", i, "up"))
+    # Modify the column and assign it back to the same dataframe
+    df <- transform(df, report.results.Level = paste(V2, Level, sep = ";"))
+    # Assign the modified dataframe back to the global environment
+    assign(paste0("vs.names.KEGG.confidence", i, "up"), df); rm(df)
+
+
+                                              
+    #v 3.1 A temporary solution because for some reason there were still a few duplicate KEGGs in Generate_Reporting_Inputs.v4.1
+    #This assumes that each duplicated KEGG has one high confidence and one low confidence (and in this case they all did, maybe that is a key to why these were missed     by the de-duplication code)
+    
+    assign(paste0("vs.names.KEGG.confidence.2", i, "up"),
+    get(paste0("vs.names.KEGG.confidence", i, "up")) %>% 
+    filter(!vs.name %in% get(paste0("vs.names.KEGG.confidence", i, "up"))[duplicated(get(paste0("vs.names.KEGG.confidence", i, "up"))$vs.name),]$vs.name))
+    
+    assign(paste0("vs.names.KEGG.confidence", i, "up"),rbind(get(paste0("vs.names.KEGG.confidence.2", i, "up")),
+    get(paste0("vs.names.KEGG.confidence", i, "up")) %>% filter(vs.name %in%
+    get(paste0("vs.names.KEGG.confidence", i, "up"))[duplicated(get(paste0("vs.names.KEGG.confidence", i, "up"))$vs.name),]$vs.name) %>% filter(Level=="High Confidence ID")))
+
+    assign(paste0("vs.names.KEGG", i, "up"),merge(get(paste0("vs.names.KEGG", i, "up")),get(paste0("vs.names.KEGG.confidence", i, "up")),all.x=TRUE))
+                                               
+                                               
+    assign(paste0("vs.names.KEGG", i, "up"),get(paste0("vs.names.KEGG", i, "up")) %>% mutate(V2=case_when(!is.na(report.results.Level)~report.results.Level,.default=V2)) %>% dplyr::select(-report.results.Level))
+    
+    assign(paste0("vs.names.KEGG", i, "up"),get(paste0("vs.names.KEGG", i, "up"))[order(get(paste0("vs.names.KEGG", i, "up"))$num), ])
+
+    #add linebreaks for long descriptions (hovertext) 
+    # Get the dataframe
+    df <- get(paste0("vs.names.KEGG", i, "up"))
+    # Modify the column and assign it back to the same dataframe
+    df$V2 <- gsub(";", "\n", df$V2)
+    # Assign the modified dataframe back to the global environment
+    assign(paste0("vs.names.KEGG", i, "up"), df);rm(df)
+
+                                               
+    #Creates the nodes (plots the points)
+    assign(paste0("network", i, "up"),plot_ly(x = ~get(paste0("Xn", i, "up")), y = ~get(paste0("Yn", i, "up")), #Node points
+                                                                                 mode = "markers", 
+                                                                                 text = get(paste0("vs.names.KEGG", i, "up"))$vs.name, 
+                                                                                 hoverinfo = "text",
+                                                                                 hovertext = get(paste0("vs.names.KEGG", i, "up"))$V2,
+                                                                                 color =as.factor(get(paste0("node.data", i, "up"))$com),
+                                                                                 colors=c(brewer.pal(5,"Dark2"),"red"),
+                                                                                 symbol = ~get(paste0("node.data", i, "up"))$input,
+                                                                                 symbols = c("circle","square")))
+
+    assign(paste0("network", i, "up"), get(paste0("network", i, "up")) %>% add_text(x = ~get(paste0("Xn", i, "up")), y = ~get(paste0("Yn", i, "up")),
+    text = get(paste0("vs.names.KEGG", i, "up"))$vs.name))
+                                                      
+    #Create edges
+    assign(paste0("edge_shapes", i, "up"),list())
+    temp <- get(paste0("Xn", i, "up"));names(temp) <- names(get(paste0("vs", i, "up")));assign(paste0("Xn", i, "up"), temp); rm(temp)
+    temp <- get(paste0("Yn", i, "up"));names(temp) <- names(get(paste0("vs", i, "up")));assign(paste0("Yn", i, "up"), temp); rm(temp)
+
+    edge_shapes <- list()  # Initialize an empty list to store edge shapes
+
+    for (j in 1:get(paste0("Ne", i, "up"))) {
+      v0 <- as.character(get(paste0("es",i,"up"))[j,]$V1)
+      v1 <- as.character(get(paste0("es",i,"up"))[j,]$V2)
+
+      edge_shape <- list(
+      type = "line",
+      line = list(color = "red", width = 0.3),
+      x0 = get(paste0("Xn", i, "up"))[v0],
+      y0 = get(paste0("Yn", i, "up"))[v0],
+      x1 = get(paste0("Xn", i, "up"))[v1],
+      y1 = get(paste0("Yn", i, "up"))[v1]
+    )
+
+    edge_shapes[[j]] <- edge_shape  # Add edge_shape to the list
+  }
+
+assign(paste0("edge_shapes", i, "up"), edge_shapes)  # Assign the list to your target variable
+
+                                                      
+  assign(paste0("axis", i, "up"),list(title = "", showgrid = FALSE, 
+   showticklabels = FALSE, zeroline = FALSE))
+                                                      
+  assign(paste0("up.plot", i, "up"),layout(
+  get(paste0("network", i, "up")),
+  title= paste("KEGG subnetwork for known metabolites significantly more abundant in\n",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
+                                                        str_split(contrasts[[i]],pattern="-")[[1]][2]),
+                                                        shapes = get(paste0("edge_shapes", i, "up")),
+                                                        xaxis = get(paste0("axis", i, "up")),
+                                                        yaxis = get(paste0("axis", i, "up")),
+                                                        width=800,height=800, #Added
+                                                        showlegend=TRUE))
+                                                      
+  }
+
 upnetworklist[[i]] <- 
-if (exists("up.plot")) {
-up.plot
-}else {
-cat(paste("No KEGG subnetwork found for metabolites significantly more abundant in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
-                            str_split(contrasts[[i]],pattern="-")[[1]][2]))}
-#Down network
-rm(down.plot)
-analysis.down <- NULL
-sig.down.KEGGs <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>%
-                                  dplyr::select(KEGG) %>% filter(!KEGG=="")
+  if (exists(paste0("up.plot", i, "up"))) {
+    get(paste0("up.plot", i, "up"))
+  } else {
+    cat(paste("No KEGG subnetwork found for metabolites significantly more abundant in",
+              str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
+              str_split(contrasts[[i]],pattern="-")[[1]][2]))
+  }
 
-if (nrow(sig.down.KEGGs)>0) {
-tryCatch({
-  analysis.down <- enrich(
-  compounds = sig.down.KEGGs$KEGG,
-  data = fella.data,
-  method = "diffusion",
-  approx = "normality")},error=function(cond) {
-            message("Error")
-            message("Here's the original error message:")
-            message(cond)
-            # Choose a return value in case of error
-            return(NA)
-        })}
-
-if (!is.null(analysis.down)) {
-#extract the sub-network 
-down.graph <- generateResultsGraph(
-    object = analysis.down,
-    data = fella.data,
-    method = "diffusion",
-    thresholdConnectedComponent = 0.05,
-    threshold= 0.05,
-    nlimit=250)
-
-if (length(down.graph)>0) {
-
-vs <- V(down.graph) #Get node list - this has names
-es <- as.data.frame(get.edgelist(down.graph)) # Get edgelist
-#This has the names and whether it was input
-node.data<-get.data.frame(down.graph,what="vertices") # Get node attribute dataframe
-#Add shape data
-node.data$input <- as.character(node.data$input)
-node.data <- node.data %>%
-  mutate(com = case_when(
-    endsWith(input, "TRUE") ~ "6",
-    TRUE ~ as.character(com)
-    ))
-node.data <- node.data %>%
-  mutate(input = case_when(
-    endsWith(input, "TRUE") ~ "Input",
-    endsWith(input, "FALSE") ~ "",
-    ))
-node.data$com <- stri_replace_all_regex(node.data$com,pattern=as.character(c(1:6)),replacement=c("pathway","module","enzyme","reaction","compound","Significantly changed compound"),vectorize=FALSE)
-Nv <- length(vs) #number of nodes
-Ne <- length(es[1]$V1) #number of edges
-
-#Coordinates for nodes
-L <- layout.fruchterman.reingold(down.graph)
-Xn <- L[,1]
-Yn <- L[,2]
-
-#Add KEGG names as attribute to graph
-#Merge the vs$names with the KEGG_map df
-KEGG_map <- readRDS("KEGG_map.df.RData")
-vs.names <- data.frame(vs$name)
-vs.names$num <- as.numeric(rownames(vs.names))
-vs.names.KEGG <- merge(vs.names,KEGG_map,by.x="vs.name",by.y="V1",all.x=TRUE)
-vs.names.KEGG <- vs.names.KEGG[order(vs.names.KEGG$num), ]
-
-#Add confidence flag
-vs.names.KEGG.confidence <- data.frame(Client_Data_Download[["report_results"]]  %>% filter(contrast==contrast[[i]]) %>% select("KEGG","Level") %>% filter(!KEGG=="") %>% distinct())
-vs.names.KEGG.confidence <- merge(vs.names.KEGG,vs.names.KEGG.confidence,by.x="vs.name",by.y="KEGG")
-#Recode confidence
-vs.names.KEGG.confidence <- vs.names.KEGG.confidence %>% mutate(Level=case_when(Level==1~"High Confidence ID",.default=as.character(Level)))
-vs.names.KEGG.confidence <- vs.names.KEGG.confidence %>% mutate(Level=case_when(Level==3~"Low Confidence ID",.default=as.character(Level)))
-vs.names.KEGG.confidence$report.results.Level <- paste(vs.names.KEGG.confidence$V2,vs.names.KEGG.confidence$Level,sep=";")
-#################
-#################
-#v 3.1 A temporary solution because for some reason there were still a few duplicate KEGGs in Generate_Reporting_Inputs.v4.1
-#This assumes that each duplicated KEGG has one high confidence and one low confidence (and in this case they all did, maybe that is a key to why these were missed by the de-duplication code)
-vs.names.KEGG.confidence.2 <- vs.names.KEGG.confidence %>% filter(!vs.name %in% vs.names.KEGG.confidence[duplicated(vs.names.KEGG.confidence$vs.name),]$vs.name) 
-vs.names.KEGG.confidence <- rbind(vs.names.KEGG.confidence.2,vs.names.KEGG.confidence %>% filter(vs.name %in% vs.names.KEGG.confidence[duplicated(vs.names.KEGG.confidence$vs.name),]$vs.name) %>% filter(Level=="High Confidence ID"))
-#################
-#################
-vs.names.KEGG <- merge(vs.names.KEGG,vs.names.KEGG.confidence,all.x=TRUE)
-
-
-vs.names.KEGG <- vs.names.KEGG %>% mutate(V2=case_when(!is.na(report.results.Level)~report.results.Level,.default=V2)) %>% dplyr::select(-report.results.Level)
-vs.names.KEGG <- vs.names.KEGG[order(vs.names.KEGG$num), ]
-
-
-#add linebreaks for long descriptions (hovertext) 
-vs.names.KEGG$V2 <- gsub(";","\n",vs.names.KEGG$V2)
-
-
-
-
-
-#Creates the nodes (plots the points)
-network <- plot_ly(x = ~Xn, y = ~Yn, #Node points
-                   mode = "markers", 
-                   text = vs.names.KEGG$vs.name, 
-                   hoverinfo = "text",
-                   hovertext = vs.names.KEGG$V2,
-                   color =as.factor(node.data$com),
-                   colors=c(brewer.pal(5,"Dark2"),"red"),
-                   symbol = ~node.data$input, symbols = c("circle","square")
-                   )
-network <- network %>% add_text(x = ~Xn, y = ~Yn,
-                  text = vs.names.KEGG$vs.name)
-
-#Create edges
-edge_shapes <- list()
-names(Xn) <- names(vs)
-names(Yn) <- names(vs)
-for(j in 1:Ne) {
-  v0 <- as.character(es[j,]$V1)
-  v1 <- as.character(es[j,]$V2)
+#Down
+  assign(paste0("analysis.down", i, "down"),NULL)
+  #Find the metabolites are significantly changed
+  assign(paste0("sig.down.KEGGs", i, "down"), Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>%
+           filter(log2FC < 0) %>% 
+           dplyr::select(KEGG) %>% filter(!KEGG==""))
   
-  edge_shape = list(
-    type = "line",
-    line = list(color = "red", width = 0.3),
-    x0 = Xn[v0],
-    y0 = Yn[v0],
-    x1 = Xn[v1],
-    y1 = Yn[v1]
-  )
-  
-  edge_shapes[[j]] <- edge_shape
+
+if (nrow(get(paste0("sig.down.KEGGs", i, "down"))) > 0) {
+  tryCatch({
+    assign(paste0("analysis.down", i, "down"), enrich(
+      compounds = get(paste0("sig.down.KEGGs", i, "down"))$KEGG,
+      data = fella.data,
+      method = "diffusion",
+      approx = "normality"
+    ))
+  }, error = function(cond) {
+    message("Error")
+    message("Here's the original error message:")
+    message(cond)
+    # Choose a return value in case of error
+    return(NA)
+  })
 }
 
-axis <- list(title = "", showgrid = FALSE, 
-             showticklabels = FALSE, zeroline = FALSE)
+  if (!is.null(get(paste0("analysis.down", i, "down")))) {
+    #extract the sub-network 
+    assign(paste0("down.graph", i, "down"),generateResultsGraph(
+      object = get(paste0("analysis.down", i, "down")),
+      data = fella.data,
+      method = "diffusion",
+      thresholdConnectedComponent = 0.05,
+      threshold= 0.05,
+      nlimit=250))
+  }
+  
+  if(length(get(paste0("down.graph", i, "down")))>0) {
+    
+    assign(paste0("vs", i, "down"),V(get(paste0("down.graph", i, "down")))) #Get node list - this has names
+    assign(paste0("es", i, "down"),as.data.frame(get.edgelist(get(paste0("down.graph", i, "down"))))) # Get edgelist
+    #This has the names and whether it was input
+    assign(paste0("node.data", i, "down"),get.data.frame(get(paste0("down.graph", i, "down")),what="vertices")) # Get node attribute dataframe
+    
+    #Add shape data
+assign(paste0("node.data", i, "down"), get(paste0("node.data", i, "down")) %>%
+  mutate(input = as.character(input)))
 
-#assign(x = paste("p2",i,sep="_"),
-down.plot <- layout(
-  network,
-   title= paste("KEGG subnetwork for known metabolites significantly less abundant in\n",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
-                            str_split(contrasts[[i]],pattern="-")[[1]][2]),
-  shapes = edge_shapes,
-  xaxis = axis,
-  yaxis = axis,
-  showlegend=TRUE)
-}
-} else {
-cat(paste("No KEGG subnetwork found for metabolites significantly less abundant in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
-                            str_split(contrasts[[i]],pattern="-")[[1]][2]))}
-#Plot the final network
+    
+    assign(paste0("node.data", i, "down"),get(paste0("node.data", i, "down")) %>%
+             mutate(com = case_when(
+               endsWith(input, "TRUE") ~ "6",
+               TRUE ~ as.character(com)
+             )))
+    assign(paste0("node.data", i, "down"),get(paste0("node.data", i, "down")) %>%
+             mutate(input = case_when(
+               endsWith(input, "TRUE") ~ "Input",
+               endsWith(input, "FALSE") ~ "",
+             )))
+
+    assign(
+      paste0("node.data", i, "down"),
+      get(paste0("node.data", i, "down")) %>%
+        dplyr::mutate_at(vars(com), ~ stri_replace_all_regex(., pattern = as.character(c(1:6)), replacement = c("pathway", "module", "enzyme", "reaction", "compound", "Significantly changed compound"), vectorize = FALSE))
+)
+
+    
+    assign(paste0("Nv", i, "down"),length(get(paste0("vs", i, "down")))) #number of nodes
+    assign(paste0("Ne", i, "down"), length(get(paste0("es", i, "down"))[[1]])) # number of edges
+    
+    
+    #Coordinates for nodes
+    assign(paste0("L", i, "down"),layout.fruchterman.reingold(get(paste0("down.graph",i,"down"))))
+    assign(paste0("Xn", i, "down"),get(paste0("L", i, "down"))[,1])
+    assign(paste0("Yn", i, "down"),get(paste0("L", i, "down"))[,2])
+    
+    #Add KEGG names as attribute to graph
+    #Merge the vs$names with the KEGG_map df
+    KEGG_map <- readRDS("KEGG_map.df.RData")
+    assign(paste0("vs.names", i, "down"),data.frame(get(paste0("vs", i, "down"))$name))
+    #Previously this was accidentally using num from the heatmap. Not sure what it was doing. Try without. 08/21
+    assign(paste0("vs.names", i, "down"), get(paste0("vs.names", i, "down")) %>%
+     mutate(num = as.numeric(row.names(get(paste0("vs.names", i, "down"))))))
+    setnames(get(paste0("vs.names", i, "down")), c("vs.name","num"))
+    assign(paste0("vs.names.KEGG", i, "down"),merge(get(paste0("vs.names", i, "down")),KEGG_map,by.x="vs.name",by.y="V1",all.x=TRUE))
+    assign(paste0("vs.names.KEGG", i, "down"), get(paste0("vs.names.KEGG", i, "down"))[order(get(paste0("vs.names.KEGG", i, "down"))$num), ])
+                                               
+    #Add confidence flag
+    assign(paste0("vs.names.KEGG.confidence", i, "down"),
+    data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% 
+    select("KEGG","Level") %>% filter(!KEGG=="") %>% distinct()))
+                                               
+    assign(paste0("vs.names.KEGG.confidence", i, "down"),
+    merge(get(paste0("vs.names.KEGG", i, "down")),get(paste0("vs.names.KEGG.confidence", i, "down")),by.x="vs.name",by.y="KEGG"))
+                                               
+    #Recode confidence
+    assign(paste0("vs.names.KEGG.confidence", i, "down"),
+    get(paste0("vs.names.KEGG.confidence", i, "down")) %>% 
+    mutate(Level=case_when(Level==1~"High Confidence ID",.default=as.character(Level))))
+    
+    assign(paste0("vs.names.KEGG.confidence", i, "down"),
+    get(paste0("vs.names.KEGG.confidence", i, "down")) %>% 
+    mutate(Level=case_when(Level==3~"Low Confidence ID",.default=as.character(Level))))
+                                               
+    # Get the dataframe
+    df <- get(paste0("vs.names.KEGG.confidence", i, "down"))
+    # Modify the column and assign it back to the same dataframe
+    df <- transform(df, report.results.Level = paste(V2, Level, sep = ";"))
+    # Assign the modified dataframe back to the global environment
+    assign(paste0("vs.names.KEGG.confidence", i, "down"), df); rm(df)
+
+
+                                              
+    #v 3.1 A temporary solution because for some reason there were still a few ddownlicate KEGGs in Generate_Reporting_Inputs.v4.1
+    #This assumes that each duplicated KEGG has one high confidence and one low confidence (and in this case they all did, maybe that is a key to why these were missed     by the de-ddownlication code)
+    
+    assign(paste0("vs.names.KEGG.confidence.2", i, "down"),
+    get(paste0("vs.names.KEGG.confidence", i, "down")) %>% 
+    filter(!vs.name %in% get(paste0("vs.names.KEGG.confidence", i, "down"))[duplicated(get(paste0("vs.names.KEGG.confidence", i, "down"))$vs.name),]$vs.name))
+    
+    assign(paste0("vs.names.KEGG.confidence", i, "down"),rbind(get(paste0("vs.names.KEGG.confidence.2", i, "down")),
+    get(paste0("vs.names.KEGG.confidence", i, "down")) %>% filter(vs.name %in%
+    get(paste0("vs.names.KEGG.confidence", i, "down"))[duplicated(get(paste0("vs.names.KEGG.confidence", i, "down"))$vs.name),]$vs.name) %>% filter(Level=="High Confidence ID")))
+
+    assign(paste0("vs.names.KEGG", i, "down"),merge(get(paste0("vs.names.KEGG", i, "down")),get(paste0("vs.names.KEGG.confidence", i, "down")),all.x=TRUE))
+                                               
+                                               
+    assign(paste0("vs.names.KEGG", i, "down"),get(paste0("vs.names.KEGG", i, "down")) %>% mutate(V2=case_when(!is.na(report.results.Level)~report.results.Level,.default=V2)) %>% dplyr::select(-report.results.Level))
+    
+    assign(paste0("vs.names.KEGG", i, "down"),get(paste0("vs.names.KEGG", i, "down"))[order(get(paste0("vs.names.KEGG", i, "down"))$num), ])
+
+    #add linebreaks for long descriptions (hovertext) 
+    # Get the dataframe
+    df <- get(paste0("vs.names.KEGG", i, "down"))
+    # Modify the column and assign it back to the same dataframe
+    df$V2 <- gsub(";", "\n", df$V2)
+    # Assign the modified dataframe back to the global environment
+    assign(paste0("vs.names.KEGG", i, "down"), df);rm(df)
+
+                                               
+    #Creates the nodes (plots the points)
+    assign(paste0("network", i, "down"),plot_ly(x = ~get(paste0("Xn", i, "down")), y = ~get(paste0("Yn", i, "down")), #Node points
+                                                                                 mode = "markers", 
+                                                                                 text = get(paste0("vs.names.KEGG", i, "down"))$vs.name, 
+                                                                                 hoverinfo = "text",
+                                                                                 hovertext = get(paste0("vs.names.KEGG", i, "down"))$V2,
+                                                                                 color =as.factor(get(paste0("node.data", i, "down"))$com),
+                                                                                 colors=c(brewer.pal(5,"Dark2"),"red"),
+                                                                                 symbol = ~get(paste0("node.data", i, "down"))$input,
+                                                                                 symbols = c("circle","square")))
+
+    assign(paste0("network", i, "down"), get(paste0("network", i, "down")) %>% add_text(x = ~get(paste0("Xn", i, "down")), y = ~get(paste0("Yn", i, "down")),
+    text = get(paste0("vs.names.KEGG", i, "down"))$vs.name))
+                                                      
+    #Create edges
+    assign(paste0("edge_shapes", i, "down"),list())
+    temp <- get(paste0("Xn", i, "down"));names(temp) <- names(get(paste0("vs", i, "down")));assign(paste0("Xn", i, "down"), temp); rm(temp)
+    temp <- get(paste0("Yn", i, "down"));names(temp) <- names(get(paste0("vs", i, "down")));assign(paste0("Yn", i, "down"), temp); rm(temp)
+
+    edge_shapes <- list()  # Initialize an empty list to store edge shapes
+
+    for (j in 1:get(paste0("Ne", i, "down"))) {
+      v0 <- as.character(get(paste0("es",i,"down"))[j,]$V1)
+      v1 <- as.character(get(paste0("es",i,"down"))[j,]$V2)
+
+      edge_shape <- list(
+      type = "line",
+      line = list(color = "red", width = 0.3),
+      x0 = get(paste0("Xn", i, "down"))[v0],
+      y0 = get(paste0("Yn", i, "down"))[v0],
+      x1 = get(paste0("Xn", i, "down"))[v1],
+      y1 = get(paste0("Yn", i, "down"))[v1]
+    )
+
+    edge_shapes[[j]] <- edge_shape  # Add edge_shape to the list
+  }
+
+assign(paste0("edge_shapes", i, "down"), edge_shapes)  # Assign the list to your target variable
+
+                                                      
+  assign(paste0("axis", i, "down"),list(title = "", showgrid = FALSE, 
+   showticklabels = FALSE, zeroline = FALSE))
+                                                      
+  assign(paste0("down.plot", i, "down"),layout(
+  get(paste0("network", i, "down")),
+  title= paste("KEGG subnetwork for known metabolites significantly less abundant in\n",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
+                                                        str_split(contrasts[[i]],pattern="-")[[1]][2]),
+                                                        shapes = get(paste0("edge_shapes", i, "down")),
+                                                        xaxis = get(paste0("axis", i, "down")),
+                                                        yaxis = get(paste0("axis", i, "down")),
+                                                        width=800,height=800, #Added
+                                                        showlegend=TRUE))
+                                                      
+  }
+
 downnetworklist[[i]] <- 
-if (exists("down.plot")) {
-down.plot
-}else {
-cat(paste("No KEGG subnetwork found for metabolites significantly less abundant in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
-                            str_split(contrasts[[i]],pattern="-")[[1]][2]))}
+  if (exists(paste0("down.plot", i, "down"))) {
+    get(paste0("down.plot", i, "down"))
+  } else {
+    cat(paste("No KEGG subnetwork found for metabolites significantly less abundant in",
+              str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
+              str_split(contrasts[[i]],pattern="-")[[1]][2]))
+  }
 }
+
 htmltools::tagList(setNames(upnetworklist, NULL))
 htmltools::tagList(setNames(downnetworklist, NULL))
 ```
-
-

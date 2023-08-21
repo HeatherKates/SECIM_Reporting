@@ -1,4 +1,7 @@
-ReportInput <- "Dudeja.Fecal.ReportingInput2023-08-17.RDATA"
+#Update this file, then use render("REPORT_GENERATOR.Rmd", output_file = "Dudeja.Fecal.Report.html")
+#When finished, save this file AS using client name for reproducibility (must be named Report_params.R at runtime)
+
+ReportInput <- "Dudeja.Serum.ReportingInput2023-08-17.RDATA"
 
 Grouping_Variable="Class"
 filter_method="IQR"
@@ -11,9 +14,9 @@ contrast_var="Class"
 boxplot_var=~Class
 #class_order <- levels(as.factor(Client_Data_Download[["metadata"]]$Class))
 test_type="t.test" #t.test, anova, lmm,"repeated_measures_anova"
-class_order <- c("Fecal_WT","Fecal_KO")
+class_order <- c("Serum_WT","Serum_KO")
 
-PI <- ""
+PI <- "Dudeja"
 Institution <- ""
 Department <- ""
 StudyContact <-"" 
@@ -22,4 +25,4 @@ StudyTitle <- ""
 Hypothesis <- ""
 StudySummary <- ""
 
-drop_compounds <- c("Acetone", "Sodium cyanide", "Vinyl Chloride", "sodium fluoride", "Magnesium hydroxide", "Acetone cynohydrin","Acetaldehyde","Sulfate","Cyanamide","EDTA","Mercury(2+)","Magnesium oxide","Chloric acid","Sinapate","Hydrochloric acid","Formate","Benzene","Potassium dichromate","Calcium formate","Radium-228","CO","Chloroform","Propan-2-ol","H2O","Acetate","Acetylene","Dichloromethane")
+drop_compounds <- c("Sodium bicarbonate")
