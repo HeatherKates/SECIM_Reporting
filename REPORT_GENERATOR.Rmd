@@ -69,19 +69,7 @@ library(htmltools)
 #Change from Tina Ho's version: 
 #Re-write if/trycatch for KEGG network to deal with cases where there are sig compounds but they're not in #the FELLA data
 #Include an option to subset metadata to only samples included in the statistical analysis in report
-Grouping_Variable="Class"
-filter_method="IQR"
-norm_method="Sum"
-Input <- "Client_Input_Sheets/Dudeja-Metabolomics_Fecal.xlsx"
-ind_var="Class"
-num_of_metadata <- 2 #includes sample names
-num_samples=10
-num_groups=2
-contrast_var="Class"
-boxplot_var=~Class
-load("Dudeja.Fecal.ReportingInput2023-08-17.RDATA")
-class_order <- levels(as.factor(Client_Data_Download[["metadata"]]$Class))
-test_type="t.test" #t.test, anova, lmm,"repeated_measures_anova"
+
 #Difference in v3.3 from 3.2 is adding an if statement to pick whether to show padj or p
 if(test_type %in% c("anova", "lmm","repeated_measures_anova")){
 p_type="adj.p.value"
