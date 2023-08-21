@@ -63,11 +63,8 @@ library(plyr)
 library(dplyr)
 library(plotly)
 library(htmltools)
-
-#In the console stack_size <- getOption("pandoc.stack.size", default = "8G")
-#Change from Tina Ho's version: 
-#Re-write if/trycatch for KEGG network to deal with cases where there are sig compounds but they're not in #the FELLA data
-#Include an option to subset metadata to only samples included in the statistical analysis in report
+source("Report_params.R") #Get variables
+load(ReportInput)
 
 #Difference in v3.3 from 3.2 is adding an if statement to pick whether to show padj or p
 if(test_type %in% c("anova", "lmm","repeated_measures_anova")){
@@ -817,11 +814,12 @@ Select areas of within this subnetwork to view and export clusters of interest.
 ```{r,warning=FALSE,message=FALSE,include=FALSE,eval=TRUE}
 # Building the database ("graph") from KEGG - pathways can be filtered here
 #This is from Step0_BuildJEGGDB.R but is not data-dependent
-load("Reporting_Input/KEGG_network.RDATA")
+load("KEGG_network.RDATA")
 ```
 
 ```{r,network_up,eval=TRUE,warning=FALSE,message=FALSE,fig.dim=c(10,10)}
 upnetworklist = list()
+downnetworklist = list()
   for (i in 1:length(contrasts)){
 rm(up.plot)
 analysis.up <- NULL
@@ -1118,7 +1116,7 @@ down.plot
 }else {
 cat(paste("No KEGG subnetwork found for metabolites significantly less abundant in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
                             str_split(contrasts[[i]],pattern="-")[[1]][2]))}
-
+}
 htmltools::tagList(setNames(upnetworklist, NULL))
 htmltools::tagList(setNames(downnetworklist, NULL))
 ```

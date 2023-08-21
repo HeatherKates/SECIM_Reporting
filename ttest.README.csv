@@ -1,0 +1,61 @@
+﻿Sheet,Field,Description
+report_results,,"The data in this sheet is used in generating the SECIM report. It is identical to data included in the other sheets, but positive and negative ionization mode data are combined and redundant results have been removed. Data in this sheet can be linked to the complete lists of analyzed peaks in other sheets by the ""row.mode"" column."
+report_results,row.mode,The unique row identifier and ionization mode of the row. This field can be used to link a result to the complete (un-reduced) results in other sheets.
+report_results,contrast,contrast
+report_results,Compound.name,"Compound name as identified by SECIM internal database or HMDB (via R package metid). If peak could not be identified by either method, the peak's mz_RT is used."
+report_results,Metabolite,Unique row identifier
+report_results,estimate,Left side contrast - Right side contrast
+report_results,estimate1,Left side contrast
+report_results,estimate2,Right side contrast
+report_results,statistic,test statistic
+report_results,p.value,p value
+report_results,parameter,test parameter
+report_results,conf.low,95% CI low of estiamte
+report_results,conf.high,95% CI high of estiamte
+report_results,method,test method
+report_results,alternative,alternative hypothesis
+report_results,mz,peak's mz
+report_results,rt,peak's retention time
+report_results,KEGG,KEGG ID (if identified)
+report_results,Class,KEGG Class
+report_results,Subclass_1,KEGG subclass 1
+report_results,Subclass_2,KEGG subclass 2
+report_results,Subclass_3,KEGG subclass 3
+report_results,Subclass_4,KEGG subclass 4
+report_results,Level,"Confidence level of ID (1 for peaks identified with SECIM database, 3 if HMDB via metid.)"
+report_results,CAS.ID,metid: CAS database ID
+report_results,HMDB.ID,metid: HMDB database ID
+report_results,Lab.ID,metid: internatl metid database ID
+report_results,Adduct,metid: Adduct for match
+report_results,mz.error,metid: error for match
+report_results,mz.match.score,metid: mz match score
+report_results,Total.score,metid: total score (same as mz match score when RT is not used for matching)
+report_results,Database,metid: Database used for searching
+report_results,B12,Left side proceeded data mean
+report_results,PBS,Right side proceeded data mean
+report_results,FC,Fold-Change (processed data) Left side/ Right side
+report_results,log2FC,log2(Fold-Change)
+report_results,Confidence,"Low-confidence tag for peaks with a ""3"" level identification "
+report_results,Row.names.x,"Redundant with ""Metabolite"" field"
+report_results,Sample_name,The processed but un-normalized peak intensity data 
+report_results,Row.names.y,"Redundant with ""Metabolite"" field"
+report_results,mode,The ionization mode in which the data was obtained
+report_results,norm.Sample_name,The processed and normalized peak intensity data 
+Pos.ttest.metab,,"The full results of the t-test for every peak analyzed in positive ionization mode. All rows and fields can be linked to ""report_results"" using the descriptions above"
+Pos.processed.data,,"The full processed peak intensity data for every peak analyzed in positive ionization mode. All rows and fields can be linked to ""report_results"" using the descriptions above"
+Pos.normalized.data,,"The ful normalized peak intensity data for every peak analyzed in positive ionization mode. All rows and fields can be linked to ""report_results"" using the descriptions above"
+Neg.ttest.metab,,"The full results of the t-test for every peak analyzed in negative ionization mode. All rows and fields can be linked to ""report_results"" using the descriptions above"
+Neg.processed.data,,"The full processed peak intensity data for every peak analyzed in negative ionization mode. All rows and fields can be linked to ""report_results"" using the descriptions above"
+Neg.normalized.data,,"The ful normalized peak intensity data for every peak analyzed in negative ionization mode. All rows and fields can be linked to ""report_results"" using the descriptions above"
+metadata,,metadata sheet including all variables used for statistical analysis.
+,,
+,,
+,,
+,,
+,,
+,,
+,,
+,,
+,,
+,,
+,,
