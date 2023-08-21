@@ -25,7 +25,6 @@ knitr::opts_chunk$set(
 ```
 
 ```{r include=FALSE,message=FALSE,warning=FALSE}
-#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
 library(SummarizedExperiment)
 library(MetaboDiff)
 #library(cowplot)
@@ -120,29 +119,23 @@ Client_Data_Download[["metadata"]]$Class <- gsub("[A-Za-z]ref_","",Client_Data_D
 class_order <- levels(as.factor(Client_Data_Download[["metadata"]]$Class))
 ```
 
-```{r,eval=TRUE}
-#customize class_order
-class_order <- c("Fecal_WT","Fecal_KO")
-```
-
-
 # Project Summary
 
-PI: Dudeja 
+PI: `PI`
 
-Institution: 
+Institution: `Institution`
 
-Department: 
+Department: `Department`
 
-Study Contact: 
+Study Contact: `StudyContact`
 
-Project: 
+Project: `Project`
 
-Study Title:
+Study Title: `StudyTitle`
 
-Hypothesis/Goal:  
+Hypothesis/Goal:  `Hypothesis`
 
-Study Summary:
+Study Summary: `StudySummary`
 
 ## Sample Information</span>
 
@@ -184,7 +177,6 @@ mutate(compound = ifelse(compound == "CO2" & row.ID == "1536", paste(mz,rt,sep="
 ```{r,eval=TRUE}
 #If we need to manually remove a compound
 #columns_to_modify <- c("KEGG","CAS.ID", "HMDB.ID","Lab.ID", "Adduct", "mz.error", "mz.match.score", "RT.error", "RT.match.score", "CE", "SS", "Total.score", "Database")
-drop_compounds <- c("Acetone", "Sodium cyanide", "Vinyl Chloride", "sodium fluoride", "Magnesium hydroxide", "Acetone cynohydrin","Acetaldehyde","Sulfate","Cyanamide","EDTA","Mercury(2+)","Magnesium oxide","Chloric acid","Sinapate","Hydrochloric acid","Formate","Benzene","Potassium dichromate","Calcium formate","Radium-228","CO","Chloroform","Propan-2-ol","H2O","Acetate","Acetylene","Dichloromethane")
 for (i in c(1:length(Client_Data_Download))){
   tryCatch({
     Client_Data_Download[[i]] <- Client_Data_Download[[i]] %>% 
@@ -828,11 +820,9 @@ Select areas of within this subnetwork to view and export clusters of interest.
 load("Reporting_Input/KEGG_network.RDATA")
 ```
 
-```{r}
-i=1
-```
-
 ```{r,network_up,eval=TRUE,warning=FALSE,message=FALSE,fig.dim=c(10,10)}
+upnetworklist = list()
+  for (i in 1:length(contrasts)){
 rm(up.plot)
 analysis.up <- NULL
 #Find the metabolites are significantly changed between cluster-SDHx samples and cluster-one samples
@@ -972,23 +962,18 @@ up.plot <- layout(
 }} else {
 cat(paste("No KEGG subnetwork found for metabolites significantly more abundant in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
                             str_split(contrasts[[i]],pattern="-")[[1]][2]))}
-#networklist[[i]] <- 
+upnetworklist[[i]] <- 
 if (exists("up.plot")) {
 up.plot
 }else {
 cat(paste("No KEGG subnetwork found for metabolites significantly more abundant in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
                             str_split(contrasts[[i]],pattern="-")[[1]][2]))}
-#}
-#}
-#htmltools::tagList(setNames(networklist, NULL))
-```
-
-```{r,network_down,eval=TRUE,warning=FALSE,message=FALSE,fig.dim=c(10,10)}
+#Down network
 rm(down.plot)
 analysis.down <- NULL
 sig.down.KEGGs <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>%
                                   dplyr::select(KEGG) %>% filter(!KEGG=="")
-###Up
+
 if (nrow(sig.down.KEGGs)>0) {
 tryCatch({
   analysis.down <- enrich(
@@ -1126,62 +1111,16 @@ down.plot <- layout(
 } else {
 cat(paste("No KEGG subnetwork found for metabolites significantly less abundant in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
                             str_split(contrasts[[i]],pattern="-")[[1]][2]))}
-#networklist[[i]] <- 
+#Plot the final network
+downnetworklist[[i]] <- 
 if (exists("down.plot")) {
 down.plot
 }else {
 cat(paste("No KEGG subnetwork found for metabolites significantly less abundant in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
                             str_split(contrasts[[i]],pattern="-")[[1]][2]))}
-#}
-#htmltools::tagList(setNames(networklist, NULL))
+
+htmltools::tagList(setNames(upnetworklist, NULL))
+htmltools::tagList(setNames(downnetworklist, NULL))
 ```
 
-```{r,eval=FALSE}
-i=2
-```
 
-```{r, ref.label=I('network_up'),eval=FALSE}
-```
-
-```{r, ref.label=I('network_down'),eval=FALSE}
-```
-
-```{r,eval=FALSE}
-i=3
-```
-
-```{r, ref.label=I('network_up'),eval=FALSE}
-```
-
-```{r, ref.label=I('network_down'),eval=FALSE}
-```
-
-```{r,eval=FALSE}
-i=4
-```
-
-```{r, ref.label=I('network_up'),eval=FALSE}
-```
-
-```{r, ref.label=I('network_down'),eval=FALSE}
-```
-
-```{r,eval=FALSE}
-i=5
-```
-
-```{r, ref.label=I('network_up'),eval=FALSE}
-```
-
-```{r, ref.label=I('network_down'),eval=FALSE}
-```
-
-```{r,eval=FALSE}
-i=6
-```
-
-```{r, ref.label=I('network_up'),eval=FALSE}
-```
-
-```{r, ref.label=I('network_down'),eval=FALSE}
-```
