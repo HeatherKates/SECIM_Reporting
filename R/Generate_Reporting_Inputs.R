@@ -32,10 +32,10 @@ library(omu)
 library(metid)
 library(MetaboAnalystR)
 
-source("R/SECIM_Metabolomics.R")
-source("R/Norm_Plots.R")
-source("R/annotate_metabolites_mass_dataset.R")
-source("R/mzIdentify_mass_dataset.R")
+source("SECIM_Reporting/R/SECIM_Metabolomics.R")
+source("SECIM_Reporting/R/Norm_Plots.R")
+source("SECIM_Reporting/R/annotate_metabolites_mass_dataset.R")
+source("SECIM_Reporting/R/mzIdentify_mass_dataset.R")
 
 ##Mode Neg
 
