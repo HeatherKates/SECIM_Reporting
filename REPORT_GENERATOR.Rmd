@@ -72,8 +72,8 @@ library(plyr)
 library(dplyr)
 library(plotly)
 library(htmltools)
-source("Report_params.template.R") #Get variables
-load(ReportInput)
+#source("Report_params.template.R") #Get variables
+Client_Data_Download <- ReportInput
 
 #Difference in v3.3 from 3.2 is adding an if statement to pick whether to show padj or p
 if(test_type %in% c("anova", "lmm","repeated_measures_anova")){
