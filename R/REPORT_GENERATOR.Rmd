@@ -220,9 +220,9 @@ contrasts <- levels(as.factor(Client_Data_Download[["report_results"]]$contrast)
 #Remove the last two because they're the plots
 Client_Data_Download_out <- Client_Data_Download
 if(test_type=="t.test"){
-Client_Data_Download_out[["README"]] <- read.csv("../../SECIM_Reporting/InputFiles/ttest.README.csv")
+Client_Data_Download_out[["README"]] <- read.csv("../InputFiles/ttest.README.csv")
 }else{
-Client_Data_Download_out[["README"]] <- read.csv("../SECIM_Reporting/InputFiles/ANOVA.emmeans.README.csv")}
+Client_Data_Download_out[["README"]] <- read.csv("../InputFiles/ANOVA.emmeans.README.csv")}
 Client_Data_Download_out <- c(Client_Data_Download_out["README"],Client_Data_Download_out[1:length(Client_Data_Download_out)-1])
 Client_Data_Download_out[["report_results"]] <- Client_Data_Download_out[["report_results"]] %>% filter(contrast %in% contrasts)
 Client_Data_Download_out <- Client_Data_Download_out[!grepl("View",names(Client_Data_Download_out))] 
@@ -823,7 +823,7 @@ Select areas of within this subnetwork to view and export clusters of interest.
 ```{r,warning=FALSE,message=FALSE,include=FALSE,eval=TRUE}
 # Building the database ("graph") from KEGG - pathways can be filtered here
 #This is from Step0_BuildJEGGDB.R but is not data-dependent
-load("../SECIM_Reporting/InputFiles/KEGG_network.RDATA")
+load("../InputFiles/KEGG_network.RDATA")
 ```
 
 ```{r,network,eval=TRUE,warning=FALSE,message=FALSE,fig.dim=c(20,20)}
@@ -909,7 +909,7 @@ assign(paste0("node.data", i, "up"), get(paste0("node.data", i, "up")) %>%
     
     #Add KEGG names as attribute to graph
     #Merge the vs$names with the KEGG_map df
-    KEGG_map <- readRDS("../SECIM_Reporting/InputFiles/KEGG_map.df.RData")
+    KEGG_map <- readRDS("../InputFiles/KEGG_map.df.RData")
     assign(paste0("vs.names", i, "up"),data.frame(get(paste0("vs", i, "up"))$name))
     #Previously this was accidentally using num from the heatmap. Not sure what it was doing. Try without. 08/21
     assign(paste0("vs.names", i, "up"), get(paste0("vs.names", i, "up")) %>%
