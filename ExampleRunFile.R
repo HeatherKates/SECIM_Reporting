@@ -1,9 +1,9 @@
 library(rmarkdown)
-source("Generate_Reporting_Inputs.R")
+source("R/Generate_Reporting_Inputs.R")
 
 #Create the Reporting Input
 ReportInput <- Generate_Report_Inputs(client="Dudeja.Serum",samples_to_drop=NULL,mzmine_version=2,
-                                               ReferenceLevel="Serum_WT",Input="/blue/timgarrett/hkates/Garrett/Reporting/Client_Input_Sheets/Dudeja-Metabolomics_Serum.xlsx",
+                                               ReferenceLevel="Serum_WT",Input="InputFiles/Dudeja-Metabolomics_Serum.xlsx",
                                                contrast_var="Class",num_meta=1,anova_formula=NULL,lm_model=NULL,
                                                test_type="t.test",subset=NULL,metid_DB_file="/blue/timgarrett/hkates/Garrett/Reporting/kegg_ms1_database0.0.3.rda")
 saveRDS(ReportInput,file="Dudeja.Serum.ReportingInput2023-08-17.RDATA")
@@ -35,5 +35,5 @@ Hypothesis <- ""
 StudySummary <- ""
 
 #Run the Report Generator
-render("REPORT_GENERATOR.Rmd", output_file = "Dudeja.Serum.Report.html")
+render("R/REPORT_GENERATOR.Rmd", output_file = "Dudeja.Serum.Report.html")
 #When finished, save this file AS using client name for reproducibility (must be named Report_params.R at runtime)
