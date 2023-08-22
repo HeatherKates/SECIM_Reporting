@@ -16,6 +16,15 @@ output:
     ]
 ---
 
+```{css, echo=FALSE}
+/* Adjust the width to control the size of each plot */
+#up-plot-container, #down-plot-container {
+    width: 100%; /* Each plot takes up the full width of its container */
+    margin-bottom: 400px; /* Add space between the plots (adjust as needed) */
+    clear: both; /* Ensure each plot starts on a new line */
+    
+}
+```
 
 ```{r, include=FALSE}
 #version update V3 from v2.1 is how the sections are hyperlinked
@@ -63,7 +72,7 @@ library(plyr)
 library(dplyr)
 library(plotly)
 library(htmltools)
-source("Report_params.R") #Get variables
+source("Report_params.template.R") #Get variables
 load(ReportInput)
 
 #Difference in v3.3 from 3.2 is adding an if statement to pick whether to show padj or p
@@ -1229,7 +1238,9 @@ downnetworklist[[i]] <-
               str_split(contrasts[[i]],pattern="-")[[1]][2]))
   }
 }
+# First Plot
+htmltools::tags$div(id="up-plot-container", upnetworklist)
 
-htmltools::tagList(setNames(upnetworklist, NULL))
-htmltools::tagList(setNames(downnetworklist, NULL))
+# Second Plot
+htmltools::tags$div(id="down-plot-container", downnetworklist)
 ```

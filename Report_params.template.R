@@ -1,4 +1,6 @@
-#Update this file, then use render("REPORT_GENERATOR.Rmd", output_file = "Dudeja.Fecal.Report.html")
+#Update this file
+#library(rmarkdown)
+#render("REPORT_GENERATOR.Rmd", output_file = "Dudeja.Fecal.Report.html")
 #When finished, save this file AS using client name for reproducibility (must be named Report_params.R at runtime)
 
 ReportInput <- "Dudeja.Serum.ReportingInput2023-08-17.RDATA"
