@@ -1112,7 +1112,7 @@ assign(paste0("node.data", i, "down"), get(paste0("node.data", i, "down")) %>%
     
     #Add KEGG names as attribute to graph
     #Merge the vs$names with the KEGG_map df
-    KEGG_map <- readRDS("KEGG_map.df.RData")
+    KEGG_map <- readRDS("../InputFiles/KEGG_map.df.RData")
     assign(paste0("vs.names", i, "down"),data.frame(get(paste0("vs", i, "down"))$name))
     #Previously this was accidentally using num from the heatmap. Not sure what it was doing. Try without. 08/21
     assign(paste0("vs.names", i, "down"), get(paste0("vs.names", i, "down")) %>%
