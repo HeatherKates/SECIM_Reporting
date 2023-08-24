@@ -13,7 +13,7 @@
 #I just need to find out why there is an "X" before the sample names in the dataset 4/20 4:32
 SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_var,anova_formula,lm_model,
                               test_type,subset,emmeans_var,mode,metid_DB_file,client,metadata){
-  print(contrast_var)
+  
 
   # Store the names of objects in the global environment before loading the file
   before <- ls()
@@ -214,15 +214,8 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
     emmeans.results$id <- gsub("\\.[0-9\\+]","",emmeans.results$id) #added the rowID key
   }
 
-if (test_type=="stats")
+
   
-  #>colnames(emmeans_lm.results)
-  #[1] "term"        "contrast"    "null.value"  "estimate"    "std.error"   "df"         
-  #[7] "statistic"   "adj.p.value" "Metabolite" 
-  
-  #Step 10: Calculate means of the un-transformed intensities (proc.data)
-  #Getting means log2 fold-changes from results means and adding to POS.results_emm
-  #What are the contrast groups if the df is emmeans_lm.results. Change to df with contrasts.
   
   ######################
   #####GROUP-MEANS######
@@ -232,9 +225,13 @@ if (test_type=="stats")
   if (test_type=="t.test"){
     contrast_vec <- gsub(" ","",levels(as.factor(ttest.results$contrast)))  
     contrast_vec <- sapply(contrast_vec, function(x) gsub("[()]", "", x))
-  } else {
+  } 
+  if (test_type %in% c("anova","lm","lme")) {
     contrast_vec <- gsub(" ","",levels(as.factor(emmeans.results$contrast)))
     contrast_vec <- sapply(contrast_vec, function(x) gsub("[()]", "", x)) #emmeans will introduce "(" into the contrast names to deal with special chars in variables
+  }
+  if (test_type == "nostats"){
+    contrast_vec
   }
   
   group_vec <- unique(unlist(sapply(as.list(contrast_vec),function(x) str_split(x,"-"))))
