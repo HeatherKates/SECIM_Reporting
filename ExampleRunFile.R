@@ -1,11 +1,16 @@
 library(rmarkdown)
 source("SECIM_Reporting/R/Generate_Reporting_Inputs.R")
 
+#test_type = "t.test","anova","lm","lme","nostats"
+
 #Create the Reporting Input
 ReportInput <- Generate_Report_Inputs(client="Dudeja.Serum",samples_to_drop=NULL,mzmine_version=2,
-                                               ReferenceLevel="Serum_WT",Input="SECIM_Reporting/InputFiles/Dudeja-Metabolomics_Serum.xlsx",
-                                               contrast_var="Class",num_meta=1,anova_formula=NULL,lm_model=NULL,
-                                               test_type="t.test",subset=NULL,metid_DB_file="SECIM_Reporting/InputFiles/kegg_ms1_database0.0.3.rda")
+                                               ReferenceLevel="Serum_WT",
+                                      Input="SECIM_Reporting/InputFiles/Dudeja-Metabolomics_Serum.xlsx",
+                                               contrast_var="Class",num_meta=1,
+                                      anova_formula=NULL,lm_model=NULL,
+                                               test_type="t.test",subset=NULL,
+                                      metid_DB_file="SECIM_Reporting/InputFiles/kegg_ms1_database0.0.3.rda")
 saveRDS(ReportInput,file="Dudeja.Serum.ReportingInput2023-08-17.RDATA")
 
 #Parameters for Report Generator
