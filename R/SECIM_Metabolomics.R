@@ -143,51 +143,47 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
     ttest.results$id <- data.final$id[(num_meta+1):nrow(data.final)]
     }
     ttest.results <- relocate(ttest.results,id)
-    } else {
+    } 
+  if (test_type %in% c("anova","lm","lme")){
     #Step 7: Stats, anova or lm 7/12, I think this section needs "Metabolite" changed to "id" and it should also be changed in the function argument for model
     fit=list()
     fit.results=list()
     emmeans=list()
 
     if(test_type=="anova"){ #I re-wrote this on 5/11/23 when there were >1 metadataset, but this might now not be right for 1 metadata. Need to go back and decide how to deal with that - two functions probably.
-      fit_emmeans <- foreach (i = (num_meta+1):nrow(data.final), .packages = c("dplyr","emmeans","stats")) %do% {
-        tempdf <- data.frame(t(data.final[c(1:(num_meta), i), ]))
-        if(num_meta==1){
-        colnames(tempdf) <- c((tempdf)[,1][1:num_meta], "id") #12.2 vs 12.1 changed "Metabolite" to "id"
-        }else{
-        colnames(tempdf) <- c(colnames(tempdf)[1:num_meta], "id")#12.2 vs 12.1 changed "Metabolite" to "id"
-      }
-        tempdf <- tempdf[-1, ]
-        tempdf$id <- as.numeric(tempdf$id)
-        tempdf$Class <- as.character(tempdf$Class)
-        tempdf$Class <- as.factor(tempdf$Class)
-        if("ID" %in% colnames(tempdf)){ #this is for repeated measures
-        tempdf$ID <- as.factor(tempdf$ID)}
-        #fit <- aov(as.formula(anova_formula), data = tempdf)
-        fit <- do.call(aov, args = list(anova_formula, tempdf))
-        #if("ALL" %in% emmeans_contrasts){
-        emmeans_obj <- tidy(pairs(emmeans(fit,emmeans_var,data=tempdf)))
-        #} else {
-          #5/31 3pm How to make it do >1 in one line? Leave this out for now and opt for subsetting + independent t-tests for now
-        #emmeans_obj2 <- tidy(pairs(emmeans(fit,emmeans_var,data=tempdf),adjust="none"))}
-  
-        list(fit = fit, emmeans = emmeans_obj)
+        fit_emmeans <- foreach (i = (num_meta+1):nrow(data.final), .packages = c("dplyr","emmeans","stats")) %do% {
+          tempdf <- data.frame(t(data.final[c(1:(num_meta), i), ]))
+          if(num_meta==1){
+          colnames(tempdf) <- c((tempdf)[,1][1:num_meta], "id") #12.2 vs 12.1 changed "Metabolite" to "id"
+          }else{
+            colnames(tempdf) <- c(colnames(tempdf)[1:num_meta], "id")#12.2 vs 12.1 changed "Metabolite" to "id"
+          }
+          tempdf <- tempdf[-1, ]
+          tempdf$id <- as.numeric(tempdf$id)
+          tempdf$Class <- as.character(tempdf$Class)
+          tempdf$Class <- as.factor(tempdf$Class)
+          if("ID" %in% colnames(tempdf)){ #this is for repeated measures
+            tempdf$ID <- as.factor(tempdf$ID)}
+          #fit <- aov(as.formula(anova_formula), data = tempdf)
+          fit <- do.call(aov, args = list(anova_formula, tempdf))
+          #if("ALL" %in% emmeans_contrasts){
+          emmeans_obj <- tidy(pairs(emmeans(fit,emmeans_var,data=tempdf)))
+          list(fit = fit, emmeans = emmeans_obj)
+        }
+        # Extract fit and emmeans from the list
+        fit <- lapply(fit_emmeans, function(x) x$fit)
+        emmeans <- lapply(fit_emmeans, function(x) x$emmeans)
         
       }
-      # Extract fit and emmeans from the list
-      fit <- lapply(fit_emmeans, function(x) x$fit)
-      emmeans <- lapply(fit_emmeans, function(x) x$emmeans)
-        
-  
-    }else if (test_type=="lm"){
-      
-      fit <- foreach (i = (num_meta+1):nrow(data.final),.packages=c("dplyr","stats"))%do% {
+    if (test_type=="lm"){
+        fit <- foreach (i = (num_meta+1):nrow(data.final),.packages=c("dplyr","stats"))%do% {
         temp <- data.frame(t(data.final[c(1:(num_meta),i),]))
         colnames(temp) <- c(temp[1,][1:num_meta],"Metabolite"); temp <- temp[-1,]
         temp$Metabolite <- as.numeric(temp$Metabolite)
         lm(lm_model, data = temp)
+        }
       }
-    }else if (test_type=="lme"){
+    if (test_type=="lme"){
       fit <- foreach (i = (num_meta+1):nrow(data.final),.packages=c("dplyr","stats"))%do% {
         temp <- data.frame(t(data.final[c(1:(num_meta),i),]))
         colnames(temp) <- c(temp[1,][1:num_meta],"id"); temp <- temp[-1,]
@@ -198,15 +194,14 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
         rownames(fit.results) <- NULL
         return(list(fit,fit.results))
       }
-    } else {
-      print("please specify a test type anova or lm")
-    }
+    } 
     if(test_type %in% c("anova","lm")){
       fit.results <- lapply(fit,tidy)
-    }else if (test_type=="lme"){
+      }
+    if (test_type=="lme"){
       fit.results <- lapply(fit,'[[', 2)
       fit <-  lapply(fit,'[[', 1)
-    }
+      }
     names(fit.results) <- data.final$id[(num_meta+1):nrow(data.final)]
     fit.results <- do.call("rbind", fit.results)
     fit.results$id <- rownames(fit.results)
@@ -218,6 +213,8 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
     
     emmeans.results$id <- gsub("\\.[0-9\\+]","",emmeans.results$id) #added the rowID key
   }
+
+if (test_type=="stats")
   
   #>colnames(emmeans_lm.results)
   #[1] "term"        "contrast"    "null.value"  "estimate"    "std.error"   "df"         
