@@ -411,21 +411,31 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   if(test_type=="t.test"){
     names(outputs_list) <- c(paste0(mode,".ttest.metab"),paste0(mode,"Empty"),paste0(mode,".processed.data"),
                              paste0(mode,".normalized.data"),paste0(mode,".FeatureView"),paste0(mode,".SampleView"),"metadata")
-  } else{
+  } 
+  if (test_type %in% c("anova","lm","lme")){
     names(outputs_list) <- c(paste0(mode,".fit.results.metab"),paste0(mode,".emmeans.results.metab"),
                              paste0(mode,".processed.data"),
                              paste0(mode,".normalized.data"),paste0(mode,".FeatureView"),paste0(mode,".SampleView"),"metadata")
   }
+  if (test_type=="nostats"){
+    names(outputs_list) <- c(paste0(mode,".FCanlaysis.metab"),paste0(mode,"Empty"),paste0(mode,".processed.data"),
+                             paste0(mode,".normalized.data"),paste0(mode,".FeatureView"),paste0(mode,".SampleView"),"metadata") 
+  }
   }else{
-    #outputs_list[[7]] <- md
+    
     #name the lists
     if(test_type=="t.test"){
       names(outputs_list) <- c(paste0(mode,".ttest.metab"),paste0(mode,"Empty"),paste0(mode,".processed.data"),
                                paste0(mode,".normalized.data"),paste0(mode,".FeatureView"),paste0(mode,".SampleView"))
-    } else{
+    }
+    if (test_type %in% c("anova","lm","lme")){
       names(outputs_list) <- c(paste0(mode,".emmeans.results.metab"),paste0(mode,".fit.results.metab"),
                                paste0(mode,".processed.data"),
                                paste0(mode,".normalized.data"),paste0(mode,".FeatureView"),paste0(mode,".SampleView"))
+    }
+    if(test_type =="nostats"){
+      names(outputs_list) <- c(paste0(mode,".FCanlaysis.metab"),paste0(mode,"Empty"),paste0(mode,".processed.data"),
+                               paste0(mode,".normalized.data"),paste0(mode,".FeatureView"),paste0(mode,".SampleView"),"metadata") 
     }
     
   }
