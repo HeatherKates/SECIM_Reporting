@@ -443,7 +443,13 @@ if(p_type=="log2FC"){
 }
 ```
 
-## Table of significantly changed metabolites </span>
+```{r}
+if(!test_type == "nostats"){
+  cat("## Table of changed metabolites </span>\n")
+} else {
+  cat("## Table of significantly changed metabolites </span>\n") 
+}
+```
 
 `r if(test_type=="nostats"){"Table of metabolites filtered as described above (log2FC > 1.5)."}`
 
@@ -451,7 +457,13 @@ if(p_type=="log2FC"){
 
 `r if(p_type=="adj.p.value"){"Table of significantly changed metabolites for overall effect of independent variable and for pairwise-contrasts filtered as described above (adjusted p-value < 0.05)."}`
 
-To view results for a test of interest, click the arrow at the top of the contrast column to sort by contrast or use the search bar to search for a contrast. To see what metabolites were significantly changed for more than one test, sort by metabolite and see how many contrasts were significant for each metabolite. (Tip: Reverse sorting by Metabolite will display known metabolites first.)
+```{r}
+if(!test_type == "nostats"){
+  cat("To view results for a test of interest, click the arrow at the top of the contrast column to sort by contrast or use the search bar to search for a contrast. To see what metabolites were changed for more than one contrast, sort by metabolite and see how many contrasts were significant for each metabolite. (Tip: Reverse sorting by Metabolite will display known metabolites first.)\n") 
+} else {
+  cat("To view results for a test of interest, click the arrow at the top of the contrast column to sort by contrast or use the search bar to search for a contrast. To see what metabolites were significantly changed for more than one test, sort by metabolite and see how many contrasts were significant for each metabolite. (Tip: Reverse sorting by Metabolite will display known metabolites first.)\n") 
+}
+```
 
 Unknown compounds (those unidentified by our internal metabolite library) were assigned low-confidence metabolite names and KEGG IDs based on mass and the HMDB database as implemented in the R package metid (Shen X 2022). The annotation of these compounds is assigned a confidence value of "3" in downloadable tables and in the report. Compounds identified using our internal library are assigned a confidence value of "1". Compounds that could not be identified via either method are annotated using their m/z_RT values and the confidence level is blank.
 
@@ -466,12 +478,31 @@ datatable(Client_Data_Download[["report_results"]] %>% filter(abs(log2FC)>1.5) %
 }
 ```
 
-# Visualizations of significantly changed metabolites</span>
+```{r}
+if(!test_type == "nostats"){
+  cat("# Visualizations of changed metabolites</span>\n")
+} else {
+  cat("# Visualizations of significantly changed metabolites</span>\n") 
+}
+```
 
 All plots below can be zoomed, selected, and downloaded individually (and/or as modified) using the toolbar on the top right of the figure (will appear when you hover your mouse). Hover over plot points to view underlying data.
 
-## Barplots of significant changes by metabolite class
-Hover over bars to view significantly changed metabolites for each class. (If a contrast is missing, there were no significantly changed metabolites with KEGG IDs for that contrast)
+```{r}
+if(!test_type == "nostats"){
+  cat("## Barplots of >1.5 log2FC changes by metabolite class </span>\n")
+} else {
+  cat("## Barplots of significant changes by metabolite class </span>\n") 
+}
+```
+
+```{r}
+if(!test_type == "nostats"){
+  cat("Hover over bars to view changed metabolites for each class. (If a contrast is missing, there were no >1.5 log2FC changed metabolites with KEGG IDs for that contrast) </span>\n")
+} else {
+  cat("Hover over bars to view significantly changed metabolites for each class. (If a contrast is missing, there were no significantly changed metabolites with KEGG IDs for that contrast) </span>\n") 
+}
+```
 
 ```{r,echo=FALSE,message=FALSE,warning=FALSE,fig.dim = c(8, 6),eval=TRUE}
 barplotlist = list()
@@ -512,10 +543,45 @@ bar.df<<-rbind(barplotvector,bar.df)
 #Make the colnames the first row
 colnames(bar.df) <- bar.df[1,]
 #Add colnames
+if(test_type=="nostats"){
+  colnames(bar.df) <- c("Class","Increase","Decreases","Increase_Text","Decrease_Text")
+  if(sum(as.numeric(bar.df$Increase)+as.numeric(bar.df$Decreases))>0){
+fig <- plot_ly()
+fig <- fig %>% add_bars(
+    x = bar.df$Class,
+    y = as.numeric(bar.df$Decrease),
+    hovertemplate = bar.df$Decrease_Text,
+    base = -as.numeric(bar.df$Decreases),
+    marker = list(
+      color = 'red'
+    ),
+    name = paste("Decreased in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to",
+                            str_split(contrasts[[i]],pattern="-")[[1]][2]))
+fig <- fig %>% add_bars(
+    x = bar.df$Class,
+    y = as.numeric(bar.df$Increase),
+    base = 0,
+    hovertemplate = bar.df$Increase_Text,
+    marker = list(
+      color = 'blue'
+    ),
+     name = paste("Increased in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to",
+                            str_split(contrasts[[i]],pattern="-")[[1]][2])
+  )
+
+fig <- fig %>% layout(title = paste("Significant changes by metabolite class\n(",contrasts[[i]],")"),
+         xaxis = list(title = ""),
+         #It would be better to set the range to min,max across all contrasts,
+         #But that information is not available when each plot is drawn.
+         yaxis = list(title = "",tick0=0, dtick=1,range = list(-max(data.frame(barplotminmax.vector)),max(data.frame(barplotminmax.vector)))),margin = list(l = 75, t = 150))
+fig %>% layout(title="TEST")
+barplotlist[[i]] = ggplotly(fig) 
+} else
+{
+print("No metabolite classes with significant changes")
+}
+  }else{
 colnames(bar.df) <- c("Class","Significant_Increase","Significant_Decreases","Increase_Text","Decrease_Text")
-#Print each compound on its own line
-#bar.df$Increase_Text <- gsub(":","\n",bar.df$Increase_Text)
-#bar.df$Decrease_Text <- gsub(":","\n",bar.df$Decrease_Text)
 if(sum(as.numeric(bar.df$Significant_Increase)+as.numeric(bar.df$Significant_Decreases))>0){
 fig <- plot_ly()
 fig <- fig %>% add_bars(
@@ -551,6 +617,9 @@ barplotlist[[i]] = ggplotly(fig)
 {
 print("No metabolite classes with significant changes")
 }
+}
+
+
   }
 htmltools::tagList(setNames(barplotlist, NULL))
 ```
