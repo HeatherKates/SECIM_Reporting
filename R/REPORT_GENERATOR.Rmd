@@ -78,11 +78,14 @@ Client_Data_Download <- ReportInput
 #Difference in v3.3 from 3.2 is adding an if statement to pick whether to show padj or p
 if(test_type %in% c("anova", "lmm","repeated_measures_anova")){
 p_type="adj.p.value"
-} else if (test_type =="t.test"){
-  if(nrow(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05)) > 10)
-    p_type="adj.p.value"
-} else {
-  p_type="p.value"
+} 
+if (test_type =="t.test"){
+  if(nrow(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05)) > 10){
+    p_type="adj.p.value"} else {
+      p_type="p.value"}
+}
+if (test_type="nostats"){
+  p_type="log2FC"
 }
 #Changes from previous version (run on Zhou-Sun): Change how sample type is dealt with
 #Read in variables here instead of subscripts
@@ -377,14 +380,22 @@ sig_peaks[[i]] <- Client_Data_Download[["report_results"]] %>% filter(contrast==
 sig_peaks_rowID[[i]] <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(adj.p.value<0.05) %>% dplyr::select(row.ID) %>% unlist()
 }
 names(sig_peaks) <- contrasts
-}else{
-for(i in 1:length(contrasts)){
-sig_peaks[[i]] <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(p.value<0.05) %>% dplyr::select(compound) %>% unlist()
-sig_peaks_rowID[[i]] <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(p.value<0.05) %>% dplyr::select(row.ID) %>% unlist()
+} 
+if (p_type="p.value"){
+  for(i in 1:length(contrasts)){
+    sig_peaks[[i]] <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(p.value<0.05) %>%   dplyr::select(compound) %>% unlist()
+    sig_peaks_rowID[[i]] <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(p.value<0.05) %>%   dplyr::select(row.ID) %>% unlist()
+  }
+  names(sig_peaks) <- contrasts
+  names(sig_peaks_rowID) <- contrasts
 }
-names(sig_peaks) <- contrasts
-names(sig_peaks_rowID) <- contrasts
-
+if (p_type="log2FC"){
+  for(i in 1:length(contrasts)){
+    sig_peaks[[i]] <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(abs(log2FC)>1.5) %>%   dplyr::select(compound) %>% unlist()
+    sig_peaks_rowID[[i]] <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(abs(log2FC)>1.5)  %>%   dplyr::select(row.ID) %>% unlist()
+    }
+  names(sig_peaks) <- contrasts
+  names(sig_peaks_rowID) <- contrasts
 }
 ```
 
