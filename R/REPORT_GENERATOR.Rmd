@@ -84,7 +84,7 @@ if (test_type =="t.test"){
     p_type="adj.p.value"} else {
       p_type="p.value"}
 }
-if (test_type="nostats"){
+if (test_type=="nostats"){
   p_type="log2FC"
 }
 #Changes from previous version (run on Zhou-Sun): Change how sample type is dealt with
@@ -224,8 +224,14 @@ contrasts <- levels(as.factor(Client_Data_Download[["report_results"]]$contrast)
 Client_Data_Download_out <- Client_Data_Download
 if(test_type=="t.test"){
 Client_Data_Download_out[["README"]] <- read.csv("../InputFiles/ttest.README.csv")
-}else{
-Client_Data_Download_out[["README"]] <- read.csv("../InputFiles/ANOVA.emmeans.README.csv")}
+}
+if(test_type %in% c("anova", "lmm","repeated_measures_anova","lme")){
+Client_Data_Download_out[["README"]] <- read.csv("../InputFiles/ANOVA.emmeans.README.csv")
+}
+if(test_type == "nostats"){
+Client_Data_Download_out[["README"]] <- read.csv("../InputFiles/ttest.README.csv") #Change this
+}
+
 Client_Data_Download_out <- c(Client_Data_Download_out["README"],Client_Data_Download_out[1:length(Client_Data_Download_out)-1])
 Client_Data_Download_out[["report_results"]] <- Client_Data_Download_out[["report_results"]] %>% filter(contrast %in% contrasts)
 Client_Data_Download_out <- Client_Data_Download_out[!grepl("View",names(Client_Data_Download_out))] 
@@ -242,7 +248,7 @@ Client_Data_Download_out %>%
 ```
 
 ```{r}
-if(test_type=="t.test"){for (i in c(1:4,7:9)){
+if(test_type %in% c("t.test","nostats")){for (i in c(1:4,7:9)){
   tryCatch({
 Client_Data_Download[[i]] <- type.convert(Client_Data_Download[[i]], as.is = TRUE)
 })
@@ -365,6 +371,8 @@ fig
 
 `r if(test_type=="t.test"){"For each compound, a t-test was performed using the R package stats (R Core Team 2023) to test the null hypothesis that the mean intensity for group one = the mean intensity for group two. Adjusted p-values are corrected using the FDR method of p-value correction."}`
 
+`r if(test_type=="nostats"){"For each compound, a fold-change analysis was performed using the R package stats (R Core Team 2023)"}`
+
 ```{r,eval=FALSE,order_contrasts}
 contrasts <- contrasts[c(1,2,5,6)]
 ```
@@ -381,7 +389,7 @@ sig_peaks_rowID[[i]] <- Client_Data_Download[["report_results"]] %>% filter(cont
 }
 names(sig_peaks) <- contrasts
 } 
-if (p_type="p.value"){
+if (p_type=="p.value"){
   for(i in 1:length(contrasts)){
     sig_peaks[[i]] <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(p.value<0.05) %>%   dplyr::select(compound) %>% unlist()
     sig_peaks_rowID[[i]] <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(p.value<0.05) %>%   dplyr::select(row.ID) %>% unlist()
@@ -389,7 +397,7 @@ if (p_type="p.value"){
   names(sig_peaks) <- contrasts
   names(sig_peaks_rowID) <- contrasts
 }
-if (p_type="log2FC"){
+if (p_type=="log2FC"){
   for(i in 1:length(contrasts)){
     sig_peaks[[i]] <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(abs(log2FC)>1.5) %>%   dplyr::select(compound) %>% unlist()
     sig_peaks_rowID[[i]] <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(abs(log2FC)>1.5)  %>%   dplyr::select(row.ID) %>% unlist()
@@ -437,7 +445,11 @@ if(p_type=="log2FC"){
 
 ## Table of significantly changed metabolites </span>
 
-Table of significantly changed metabolites for overall effect of independent variable and for pairwise-contrasts filtered as described above (p-value < 0.05).
+`r if(test_type=="nostats"){"Table of metabolites filtered as described above (log2FC > 1.5)."}`
+
+`r if(p_type=="p.value"){"Table of significantly changed metabolites for overall effect of independent variable and for pairwise-contrasts filtered as described above (p-value < 0.05)."}`
+
+`r if(p_type=="adj.p.value"){"Table of significantly changed metabolites for overall effect of independent variable and for pairwise-contrasts filtered as described above (adjusted p-value < 0.05)."}`
 
 To view results for a test of interest, click the arrow at the top of the contrast column to sort by contrast or use the search bar to search for a contrast. To see what metabolites were significantly changed for more than one test, sort by metabolite and see how many contrasts were significant for each metabolite. (Tip: Reverse sorting by Metabolite will display known metabolites first.)
 
@@ -445,8 +457,12 @@ Unknown compounds (those unidentified by our internal metabolite library) were a
 
 ```{r,warn=FALSE}
 if(p_type=="p.value"){
-datatable(Client_Data_Download[["report_results"]] %>% filter(p.value<0.05) %>% dplyr::select(c(compound,p.value,Level,contrast,contains("FC"))) %>% dplyr::mutate(across(where(is.numeric), round, 5)),  caption = 'Table of significantly changed metabolites for (p-value < 0.05)')}else{
+datatable(Client_Data_Download[["report_results"]] %>% filter(p.value<0.05) %>% dplyr::select(c(compound,p.value,Level,contrast,contains("FC"))) %>% dplyr::mutate(across(where(is.numeric), round, 5)),  caption = 'Table of significantly changed metabolites for (p-value < 0.05)')}
+if (p_type == "adj.p.value"){
 datatable(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05) %>% dplyr::select(c(compound,adj.p.value,Level,contrast,contains("FC"))) %>% dplyr::mutate(across(where(is.numeric), round, 5)),  caption = 'Table of significantly changed metabolites for (adjusted p-value < 0.05)')
+}
+if (p_type=="log2FC"){
+datatable(Client_Data_Download[["report_results"]] %>% filter(abs(log2FC)>1.5) %>% dplyr::select(c(compound,Level,contrast,contains("FC"))) %>% dplyr::mutate(across(where(is.numeric), round, 5)),  caption = 'Table of changed metabolites (log2FC > 1.5)')
 }
 ```
 
@@ -539,46 +555,49 @@ print("No metabolite classes with significant changes")
 htmltools::tagList(setNames(barplotlist, NULL))
 ```
 
-## Plots of metabolites' fold-change and adjusted p-value for each contrast</span>
+```{r}
+if(!test_type == "nostats"){
 
-Hover over plot points to view compound labels. 
+cat("## Plots of metabolites' fold-change and adjusted p-value for each contrast</span>\n")
 
-Metabolites that pass the significance cutoff (but not fold-change) are orange, metabolites that pass the fold-change cutoff (but not significance) are black, and metabolites that pass both the fold-change and significance cutoffs are red. Metabolites in gray do not pass the significance or fold-change cutoff. If a color is missing from the plot, that is because no metabolites fall in that category. Adjusted p-value cutoff is 0.05, Fold-Change cutoff is 1.5.
+cat("Hover over plot points to view compound labels.\n")
 
-```{r,volcano,echo=FALSE,warning=FALSE,message=FALSE,eval=TRUE}
-#,fig.height=20,fig.width=8
-volcanoplotlist = list()
-for (i in 1:length(contrasts)){
-##Volcano Plot
-volcano.res <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])
+cat("Metabolites that pass the significance cutoff (but not fold-change) are orange, metabolites that pass the fold-change cutoff (but not significance) are black, and metabolites that pass both the fold-change and significance cutoffs are red. Metabolites in gray do not pass the significance or fold-change cutoff. If a color is missing from the plot, that is because no metabolites fall in that category. Adjusted p-value cutoff is 0.05, Fold-Change cutoff is 1.5.\n")
 
-#### Volcano plot of metabolites' fold-change highlights metabolites with different abundances between groups
-#Hover over points to view significantly metabolite names
-# add a grouping column; default value is "not significant"
-volcano.res$group <- "NotSignificant"
-
-# change the grouping for the entries with significance but not a large enough log2FC change
-volcano.res[which(volcano.res$compound %in% sig_peaks[[i]] & volcano.res$row.ID %in% sig_peaks_rowID[[i]] & abs(volcano.res['log2FC']) < 0.58 ),"group"] <- "Significant"
-
-# change the grouping for the entries a large enough log2FC change but not a low enough p value
-volcano.res[which(abs(volcano.res['log2FC']) > 0.58 ),"group"] <- "log2FC"
-
-# change the grouping for the entries with both significance and large enough log2FC change > 0.58
-volcano.res[which(volcano.res$compound %in% sig_peaks[[i]]  & abs(volcano.res['log2FC']) > 0.58 ),"group"] <- "Significant&log2FC"
-
-# make the Plot.ly plot
-p <- plot_ly(data = volcano.res, x = volcano.res$log2FC, y = -log10(volcano.res[[p_type]]),hoverinfo = "text", text = paste(volcano.res$compound,volcano.res$Level,sep=":"),
-             mode = "markers", color = volcano.res$group,colors = c(log2FC="black",NotSignificant="gray",Significant="orange",`Significant&log2FC`="red")) %>% 
-  layout(title=paste("P-value vs. Fold-Change in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
-                            str_split(contrasts[[i]],pattern="-")[[1]][2]),
-         xaxis = list(title = 'log2FC'), 
-         yaxis = list(title = '-log10PVal'),margin = list(l = 75, t = 150))
-
-    margin = list(l = 75, t = 150)
-
-volcanoplotlist[[i]]=p
- }
-htmltools::tagList(setNames(volcanoplotlist, NULL))
+cat("```{r,volcano,echo=FALSE,warning=FALSE,message=FALSE,eval=TRUE}\n")
+cat('volcanoplotlist = list()')
+cat('for (i in 1:length(contrasts)){\n')
+cat('## Volcano Plot\n')
+cat('volcano.res <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])\n')
+cat('#### Volcano plot of metabolites\' fold-change highlights metabolites with different abundances between groups\n')
+cat('# Hover over points to view significantly metabolite names\n')
+cat('# add a grouping column; default value is "not significant"\n')
+cat('volcano.res$group <- "NotSignificant"\n')
+cat('\n')
+cat('# change the grouping for the entries with significance but not a large enough log2FC change\n')
+cat('volcano.res[which(volcano.res$compound %in% sig_peaks[[i]] & volcano.res$row.ID %in% sig_peaks_rowID[[i]] & abs(volcano.res[\'log2FC\']) < 0.58 ),"group"] <- "Significant"\n')
+cat('\n')
+cat('# change the grouping for the entries a large enough log2FC change but not a low enough p value\n')
+cat('volcano.res[which(abs(volcano.res[\'log2FC\']) > 0.58 ),"group"] <- "log2FC"\n')
+cat('\n')
+cat('# change the grouping for the entries with both significance and large enough log2FC change > 0.58\n')
+cat('volcano.res[which(volcano.res$compound %in% sig_peaks[[i]]  & abs(volcano.res[\'log2FC\']) > 0.58 ),"group"] <- "Significant&log2FC"\n')
+cat('\n')
+cat('# make the Plot.ly plot\n')
+cat('p <- plot_ly(data = volcano.res, x = volcano.res$log2FC, y = -log10(volcano.res[[p_type]]),hoverinfo = "text", text = paste(volcano.res$compound,volcano.res$Level,sep=":"),\n')
+cat('             mode = "markers", color = volcano.res$group,colors = c(log2FC="black",NotSignificant="gray",Significant="orange",`Significant&log2FC`="red")) %>% \n')
+cat('  layout(title=paste("P-value vs. Fold-Change in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",\n')
+cat('                            str_split(contrasts[[i]],pattern="-")[[1]][2]),\n')
+cat('         xaxis = list(title = \'log2FC\'), \n')
+cat('         yaxis = list(title = \'-log10PVal\'),margin = list(l = 75, t = 150))\n')
+cat('\n')
+cat('margin = list(l = 75, t = 150)\n')
+cat('\n')
+cat('volcanoplotlist[[i]]=p\n')
+cat(' }\n')
+cat('htmltools::tagList(setNames(volcanoplotlist, NULL))\n')
+cat("```\n")
+}
 ```
 
 ## Per-contrast boxplot of any of the top significantly changed metabolites across sample class</span>
@@ -596,10 +615,16 @@ for (i in c(1:length(contrasts))){
 #Manual changes needed for where metabolite data begins and for groupvar
 ## Order results by p.value values
 if(p_type=="adj.p.value"){
-top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(adj.p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
-Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(adj.p.value) %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")}else{
-top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
-Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(p.value) %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
+  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(adj.p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
+  Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(adj.p.value) %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
+}
+if(p_type=="p.value"){
+  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
+  Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(p.value) %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
+}
+if(p_type=="log2FC"){
+  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(desc(log2FC)) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
+  Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(desc(log2FC)) %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
 }
 
 #Combine - CHANGE where n:nrow begins depends on...number of metadata? 
@@ -778,8 +803,18 @@ for (i in 1:length(contrasts)){
   
 #Manual changes needed for where metabolite data begins and for groupvar
 ## Order results by p.value values
-top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast == contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(adj.p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
-Client_Data_Download[["report_results"]] %>% filter(contrast == contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(adj.p.value) %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
+if(p_type=="adj.p.value"){
+  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast == contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(adj.p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
+  Client_Data_Download[["report_results"]] %>% filter(contrast == contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(adj.p.value) %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
+}
+if(p_type=="p.value"){
+  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast == contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
+  Client_Data_Download[["report_results"]] %>% filter(contrast == contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(p.value) %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
+}
+if(p_type=="log2FC"){
+  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast == contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(desc(log2FC)) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
+  Client_Data_Download[["report_results"]] %>% filter(contrast == contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(desc(log2FC)) %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
+}
 #detected in positive 
 
 #Combine
