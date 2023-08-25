@@ -423,13 +423,15 @@ names(sig_peaks_rowID) <- contrasts
 
 ```{r}
 #Make all of this into an R code block so a for loop can be used
-if(p_type=="p.value"){
-for (i in 1:length(contrasts)){
-print(paste(length(sig_peaks[[i]]), "metabolites were significantly changed (p_type < 0.05) between",str_split(contrasts[[i]],"-")[[1]][[1]], "and",str_split(contrasts[[i]],"-")[[1]][[2]],sep=" "))
-}}else{
-for (i in 1:length(contrasts)){
-print(paste(length(sig_peaks[[i]]), "metabolites were significantly changed (adj. p value < 0.05) between",str_split(contrasts[[i]],"-")[[1]][[1]], "and",str_split(contrasts[[i]],"-")[[1]][[2]],sep=" "))
+if(p_type %in% c("p.value","adj.p.value")){
+  for (i in 1:length(contrasts)){
+    print(paste(length(sig_peaks[[i]]), "metabolites were significantly changed (",p_type,"< 0.05) between",str_split(contrasts[[i]],"-")[[1]][[1]], "and",str_split(contrasts[[i]],"-")[[1]][[2]],sep=" "))
+    }
 }
+if(p_type=="log2FC"){
+  for (i in 1:length(contrasts)){
+    print(paste(length(sig_peaks[[i]]), "metabolites were changed (",p_type,"> 1.5) between",str_split(contrasts[[i]],"-")[[1]][[1]], "and",str_split(contrasts[[i]],"-")[[1]][[2]],sep=" "))
+    }  
 }
 ```
 
