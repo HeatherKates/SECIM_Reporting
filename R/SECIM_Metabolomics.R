@@ -231,7 +231,8 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
     contrast_vec <- sapply(contrast_vec, function(x) gsub("[()]", "", x)) #emmeans will introduce "(" into the contrast names to deal with special chars in variables
   }
   if (test_type == "nostats"){
-    contrast_vec
+    contrast_vec <- combn(levels(as.factor(metadata$Class)), 2, FUN = function(x) paste(x[1], " - ", x[2]), simplify = FALSE)
+
   }
   
   group_vec <- unique(unlist(sapply(as.list(contrast_vec),function(x) str_split(x,"-"))))
