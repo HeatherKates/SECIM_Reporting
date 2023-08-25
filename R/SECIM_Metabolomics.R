@@ -22,8 +22,6 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   metid_DB <- setdiff(ls(), before)[2]
   print(metid_DB)
   
-  
-
   dataset[is.na(dataset)] <- 0
   #makes a metadataset frame out of the header rows of dataset
   md <- data.frame(t(data.frame(dataset[1:num_meta,]))); colnames(md) <- md[1,]; md <- md %>% slice(-1)
@@ -231,8 +229,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
     contrast_vec <- sapply(contrast_vec, function(x) gsub("[()]", "", x)) #emmeans will introduce "(" into the contrast names to deal with special chars in variables
   }
   if (test_type == "nostats"){
-    contrast_vec <- combn(levels(as.factor(metadata$Class)), 2, FUN = function(x) paste(x[1], " - ", x[2]), simplify = FALSE)
-
+    contrast_vec <- combn(levels(as.factor(metadata$Class)), 2, FUN = function(x) paste0(x[1], "-", x[2]), simplify = FALSE)
   }
   
   group_vec <- unique(unlist(sapply(as.list(contrast_vec),function(x) str_split(x,"-"))))
@@ -371,7 +368,8 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
     outputs_list[[1]] <- outputs_list[[1]] %>% relocate(adj.p.value, .after = p.value)
     outputs_list[[2]] <- print("Empty for t test")
     
-  } else {
+  } 
+  if (test_type %in% c("lm","anova","lme")){
     outputs_list[[1]] <- merge(emmeans.results,peak_annotation,by="id",all.x=TRUE)
     #In case emmeans adds "()" due to special chars
     outputs_list[[1]]$contrast <- gsub("[()]", "",outputs_list[[1]]$contrast)
@@ -380,8 +378,12 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
     outputs_list[[1]] <- outputs_list[[1]] %>% relocate(contrast,compound)
     outputs_list[[2]] <- merge(fit.results,peak_annotation,by="id",all.x=TRUE)
     outputs_list[[2]] <- outputs_list[[2]] %>% relocate(compound)
-
-    
+  }
+  if (test_type == "nostats"){
+  outputs_list[[1]] <- merge(means_FC,peak_annotation,by="id",all.x=TRUE)
+  outputs_list[[1]]$contrast <- gsub("[()]", "",outputs_list[[1]]$contrast)
+  outputs_list[[1]] <- outputs_list[[1]] %>% relocate(contrast,compound)
+  outputs_list[[2]] <- print("Empty for nostats")
   }
 
   #Merge filtered dataset with metabolite annotation
