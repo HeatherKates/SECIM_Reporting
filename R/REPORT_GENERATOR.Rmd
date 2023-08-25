@@ -164,7 +164,7 @@ datatable(data.frame(table(Client_Data_Download$metadata$Class)),
 
 ## Download sample data, raw data, processed data, and statistical test results
 
-The results of statistical tests to identify significant metabolites are provided. In addition, we also include raw, feature-filtered, and normalized metabolomic intensity datasets. Please review the "Read Me" sheet included in the download for a detailed explanations of variables.
+The results of statistical tests to identify changed metabolites are provided. In addition, we also include raw, feature-filtered, and normalized metabolomic intensity datasets. Please review the "Read Me" sheet included in the download for a detailed explanations of variables.
 
 ```{r,eval=FALSE}
 #If we need to manually change annotation of a compound
@@ -309,7 +309,7 @@ grid.arrange(Client_Data_Download[["Neg.SampleView"]][["grobs"]][[1]],Client_Dat
 
 # Statistical analysis</span>
 
-Multivariate and univariate statistical analysis were performed to assess clustering of samples based on metabolomic profiles and to identify metabolites with significant changes in abundance between groups or biological conditions.
+Multivariate and univariate statistical analysis were performed to assess clustering of samples based on metabolomic profiles and to identify metabolites with changes in abundance between groups or biological conditions.
 
 Following univariate statistical analysis of all compounds detected in positive and negative ionization modes independently, the list of compounds were combined between negative and positive ionization modes and reduced to a single representative compound per likely metabolite based on p-value (lowest p-value compound retrained).
 
@@ -569,7 +569,7 @@ fig <- fig %>% add_bars(
                             str_split(contrasts[[i]],pattern="-")[[1]][2])
   )
 
-fig <- fig %>% layout(title = paste("Significant changes by metabolite class\n(",contrasts[[i]],")"),
+fig <- fig %>% layout(title = paste(" >1.5 log2FC changes by metabolite class\n(",contrasts[[i]],")"),
          xaxis = list(title = ""),
          #It would be better to set the range to min,max across all contrasts,
          #But that information is not available when each plot is drawn.
@@ -578,7 +578,7 @@ fig %>% layout(title="TEST")
 barplotlist[[i]] = ggplotly(fig) 
 } else
 {
-print("No metabolite classes with significant changes")
+print("No metabolite classes with >1.5 log2FC changes")
 }
   }else{
 colnames(bar.df) <- c("Class","Significant_Increase","Significant_Decreases","Increase_Text","Decrease_Text")
@@ -618,8 +618,6 @@ barplotlist[[i]] = ggplotly(fig)
 print("No metabolite classes with significant changes")
 }
 }
-
-
   }
 htmltools::tagList(setNames(barplotlist, NULL))
 ```
@@ -669,7 +667,13 @@ cat("```\n")
 }
 ```
 
-## Per-contrast boxplot of any of the top significantly changed metabolites across sample class</span>
+```{r}
+if(!test_type == "nostats"){
+  cat("## Per-contrast boxplot of any of the top changed metabolites across sample class</span>\n")
+} else {
+  cat("## Per-contrast boxplot of any of the top significantly changed metabolites across sample class</span>\n") 
+}
+```
 
 For each contrast, the top changed metabolites are available to view as a boxplot of normalized peak intensity across sample class.
 
@@ -859,8 +863,13 @@ boxplotlist[[i]]=plot #this works if you just print(plot), the plots are right
 htmltools::tagList(boxplotlist)
 ```
 
-
-## Heatmaps of metabolites with most significant difference in abundance</span>
+```{r}
+if(!test_type == "nostats"){
+  cat("## Heatmaps of metabolites with greatest log2FC difference in abundance</span>\n")
+} else {
+  cat("## Heatmaps of metabolites with most significant difference in abundance</span>\n") 
+}
+```
 
 For each contrast, the top changed metabolites are available to view as a heatmap of normalized peak intensity. Samples (columns) are clustered by the peak intensities for the displayed set of compounds.
 
@@ -914,6 +923,17 @@ normalized_int <- normalized_int %>% filter(!row.names(normalized_int) %in% coln
 normalized_int <- mutate_all(normalized_int, function(x) as.numeric(as.character(x)))
 
 if(nrow(normalized_int)>1){
+  if(test_type=="nostats"){
+    hm <-   heatmaply(plot_method = "plotly",normalized_int,show_dendrogram = FALSE,showticklabels=c(FALSE, TRUE),scale="row",
+          colors=c("darkblue","white","darkred"),
+          #Make this the annotation bar
+          col_side_colors = sidecols,xlab = "Samples",
+  ylab = "Metabolites", 
+  main = paste("Peak heights (scaled) for most changed metabolites\n",contrasts[[i]],sep=""),margins=c(0,0,60,0),fontsize_row = 5,cex.main=1,labRow=gsub("\\d+_\\w+_","",(rownames(normalized_int))),side_color_colorbar_len = .5)
+
+heatmaplist[[i]]=hm
+    
+  }else{
 hm <-   heatmaply(plot_method = "plotly",normalized_int,show_dendrogram = FALSE,showticklabels=c(FALSE, TRUE),scale="row",
           colors=c("darkblue","white","darkred"),
           #Make this the annotation bar
@@ -924,6 +944,7 @@ hm <-   heatmaply(plot_method = "plotly",normalized_int,show_dendrogram = FALSE,
 heatmaplist[[i]]=hm
 }
 }
+}
 htmltools::tagList(setNames(heatmaplist, NULL))
 ```
 
@@ -931,11 +952,15 @@ htmltools::tagList(setNames(heatmaplist, NULL))
 
 KEGG analysis was performed with the R package FELLA (https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2487-5). Starting from a list of metabolites of interest, FELLA applies a null diffusive process over a network-based representation of the KEGG database and derive a relevant sub-network. The result of this analysis is a list of affected pathways and a graphical sub-pathway representation. The input list of metabolites of interest is indicated by the plot title. 
 
-The significantly changed compounds input into the KEGG subnetwork analysis are shown with red squares (see key) and are drawn in their KEGG subnetwork. Hover over nodes to view annotation and to see the confidence of our identification of a particular input KEGG compound.
+```{r}
+if(!test_type == "nostats"){
+  cat("The most changed (log2FC) compounds input into the KEGG subnetwork analysis are shown with red squares (see key) and are drawn in their KEGG subnetwork. Hover over nodes to view annotation and to see the confidence of our identification of a particular input KEGG compound.\n(If no subnetworks are visible below, there were no >1.5 log2FC changed metabolites with KEGG IDs.)\n")
+} else {
+  cat("The significantly changed compounds input into the KEGG subnetwork analysis are shown with red squares (see key) and are drawn in their KEGG subnetwork. Hover over nodes to view annotation and to see the confidence of our identification of a particular input KEGG compound.\n (If no subnetworks are visible below, there were no significantly changed metabolites with KEGG IDs.)\n") 
+}
+```
 
 Select areas of within this subnetwork to view and export clusters of interest. 
-
-(If no subnetworks are visible below, there were no significantly changed metabolites with KEGG IDs.)
 
 ```{r,warning=FALSE,message=FALSE,include=FALSE,eval=TRUE}
 # Building the database ("graph") from KEGG - pathways can be filtered here
@@ -997,22 +1022,30 @@ assign(paste0("node.data", i, "up"), get(paste0("node.data", i, "up")) %>%
   mutate(input = as.character(input)))
 
     
-    assign(paste0("node.data", i, "up"),get(paste0("node.data", i, "up")) %>%
+  assign(paste0("node.data", i, "up"),get(paste0("node.data", i, "up")) %>%
              mutate(com = case_when(
                endsWith(input, "TRUE") ~ "6",
                TRUE ~ as.character(com)
              )))
-    assign(paste0("node.data", i, "up"),get(paste0("node.data", i, "up")) %>%
+  assign(paste0("node.data", i, "up"),get(paste0("node.data", i, "up")) %>%
              mutate(input = case_when(
                endsWith(input, "TRUE") ~ "Input",
                endsWith(input, "FALSE") ~ "",
              )))
 
-    assign(
+  if(test_type=="nostats"){
+   assign(
+      paste0("node.data", i, "up"),
+      get(paste0("node.data", i, "up")) %>%
+        dplyr::mutate_at(vars(com), ~ stri_replace_all_regex(., pattern = as.character(c(1:6)), replacement = c("pathway", "module", "enzyme", "reaction", "compound", ">1.5 log2FC changed compound"), vectorize = FALSE))
+  ) 
+  }else{
+  assign(
       paste0("node.data", i, "up"),
       get(paste0("node.data", i, "up")) %>%
         dplyr::mutate_at(vars(com), ~ stri_replace_all_regex(., pattern = as.character(c(1:6)), replacement = c("pathway", "module", "enzyme", "reaction", "compound", "Significantly changed compound"), vectorize = FALSE))
-)
+  )
+    }
 
     
     assign(paste0("Nv", i, "up"),length(get(paste0("vs", i, "up")))) #number of nodes
@@ -1131,6 +1164,17 @@ assign(paste0("edge_shapes", i, "up"), edge_shapes)  # Assign the list to your t
   assign(paste0("axis", i, "up"),list(title = "", showgrid = FALSE, 
    showticklabels = FALSE, zeroline = FALSE))
                                                       
+  if(test_type=="nostats"){
+    assign(paste0("up.plot", i, "up"),layout(
+  get(paste0("network", i, "up")),
+  title= paste("KEGG subnetwork for known metabolites more abundant in\n",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
+                                                        str_split(contrasts[[i]],pattern="-")[[1]][2]),
+                                                        shapes = get(paste0("edge_shapes", i, "up")),
+                                                        xaxis = get(paste0("axis", i, "up")),
+                                                        yaxis = get(paste0("axis", i, "up")),
+                                                        width=800,height=800, #Added
+                                                        showlegend=TRUE))
+  }else{
   assign(paste0("up.plot", i, "up"),layout(
   get(paste0("network", i, "up")),
   title= paste("KEGG subnetwork for known metabolites significantly more abundant in\n",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
@@ -1140,6 +1184,7 @@ assign(paste0("edge_shapes", i, "up"), edge_shapes)  # Assign the list to your t
                                                         yaxis = get(paste0("axis", i, "up")),
                                                         width=800,height=800, #Added
                                                         showlegend=TRUE))
+  }
                                                       
   }
 
@@ -1147,9 +1192,15 @@ upnetworklist[[i]] <-
   if (exists(paste0("up.plot", i, "up"))) {
     get(paste0("up.plot", i, "up"))
   } else {
+    if(test_type=="nostats"){
+     cat(paste("No KEGG subnetwork found for metabolites more abundant in",
+              str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
+              str_split(contrasts[[i]],pattern="-")[[1]][2])) 
+    }else{
     cat(paste("No KEGG subnetwork found for metabolites significantly more abundant in",
               str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
               str_split(contrasts[[i]],pattern="-")[[1]][2]))
+    }
   }
 
 #Down
@@ -1211,11 +1262,19 @@ assign(paste0("node.data", i, "down"), get(paste0("node.data", i, "down")) %>%
                endsWith(input, "FALSE") ~ "",
              )))
 
-    assign(
+    if(test_type=="nostats"){
+      assign(
+      paste0("node.data", i, "down"),
+      get(paste0("node.data", i, "down")) %>%
+        dplyr::mutate_at(vars(com), ~ stri_replace_all_regex(., pattern = as.character(c(1:6)), replacement = c("pathway", "module", "enzyme", "reaction", "compound", ">1.5 log2FC changed compound"), vectorize = FALSE))
+)
+      }else{
+        assign(
       paste0("node.data", i, "down"),
       get(paste0("node.data", i, "down")) %>%
         dplyr::mutate_at(vars(com), ~ stri_replace_all_regex(., pattern = as.character(c(1:6)), replacement = c("pathway", "module", "enzyme", "reaction", "compound", "Significantly changed compound"), vectorize = FALSE))
 )
+      }
 
     
     assign(paste0("Nv", i, "down"),length(get(paste0("vs", i, "down")))) #number of nodes
@@ -1231,7 +1290,6 @@ assign(paste0("node.data", i, "down"), get(paste0("node.data", i, "down")) %>%
     #Merge the vs$names with the KEGG_map df
     KEGG_map <- readRDS("../InputFiles/KEGG_map.df.RData")
     assign(paste0("vs.names", i, "down"),data.frame(get(paste0("vs", i, "down"))$name))
-    #Previously this was accidentally using num from the heatmap. Not sure what it was doing. Try without. 08/21
     assign(paste0("vs.names", i, "down"), get(paste0("vs.names", i, "down")) %>%
      mutate(num = as.numeric(row.names(get(paste0("vs.names", i, "down"))))))
     setnames(get(paste0("vs.names", i, "down")), c("vs.name","num"))
@@ -1333,7 +1391,17 @@ assign(paste0("edge_shapes", i, "down"), edge_shapes)  # Assign the list to your
                                                       
   assign(paste0("axis", i, "down"),list(title = "", showgrid = FALSE, 
    showticklabels = FALSE, zeroline = FALSE))
-                                                      
+   if(test_type=="nostats"){
+     assign(paste0("down.plot", i, "down"),layout(
+  get(paste0("network", i, "down")),
+  title= paste("KEGG subnetwork for known metabolites less abundant in\n",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
+                                                        str_split(contrasts[[i]],pattern="-")[[1]][2]),
+                                                        shapes = get(paste0("edge_shapes", i, "down")),
+                                                        xaxis = get(paste0("axis", i, "down")),
+                                                        yaxis = get(paste0("axis", i, "down")),
+                                                        width=800,height=800, #Added
+                                                        showlegend=TRUE))
+   }else{
   assign(paste0("down.plot", i, "down"),layout(
   get(paste0("network", i, "down")),
   title= paste("KEGG subnetwork for known metabolites significantly less abundant in\n",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
@@ -1343,6 +1411,7 @@ assign(paste0("edge_shapes", i, "down"), edge_shapes)  # Assign the list to your
                                                         yaxis = get(paste0("axis", i, "down")),
                                                         width=800,height=800, #Added
                                                         showlegend=TRUE))
+   }
                                                       
   }
 
@@ -1350,9 +1419,15 @@ downnetworklist[[i]] <-
   if (exists(paste0("down.plot", i, "down"))) {
     get(paste0("down.plot", i, "down"))
   } else {
+    if(test_type=="nostats"){
+     cat(paste("No KEGG subnetwork found for metabolites less abundant in",
+              str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
+              str_split(contrasts[[i]],pattern="-")[[1]][2])) 
+    }else{
     cat(paste("No KEGG subnetwork found for metabolites significantly less abundant in",
               str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
               str_split(contrasts[[i]],pattern="-")[[1]][2]))
+    }
   }
 }
 # First Plot
