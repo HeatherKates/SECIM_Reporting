@@ -73,6 +73,7 @@ library(dplyr)
 library(plotly)
 library(htmltools)
 #source("Report_params.template.R") #Get variables
+ReportInput <- readRDS("Dudeja.Serum.ReportingInput.2023-08-25.RDATA") #only if not run using Exa
 Client_Data_Download <- ReportInput
 
 #Difference in v3.3 from 3.2 is adding an if statement to pick whether to show padj or p
@@ -458,11 +459,12 @@ if(test_type == "nostats"){
 `r if(p_type=="adj.p.value"){"Table of significantly changed metabolites for overall effect of independent variable and for pairwise-contrasts filtered as described above (adjusted p-value < 0.05)."}`
 
 ```{r}
-if(test_type == "nostats"){
-  cat("To view results for a test of interest, click the arrow at the top of the contrast column to sort by contrast or use the search bar to search for a contrast. To see what metabolites were changed for more than one contrast, sort by metabolite and see how many contrasts were significant for each metabolite. (Tip: Reverse sorting by Metabolite will display known metabolites first.)\n") 
+if (test_type == "nostats") {
+  html_text <- "To view results for a test of interest, click the arrow at the top of the contrast column to sort by contrast or use the search bar to search for a contrast. To see what metabolites were changed for more than one contrast, sort by metabolite and see how many contrasts were significant for each metabolite. (Tip: Reverse sorting by Metabolite will display known metabolites first.)\n"
 } else {
-  cat("To view results for a test of interest, click the arrow at the top of the contrast column to sort by contrast or use the search bar to search for a contrast. To see what metabolites were significantly changed for more than one test, sort by metabolite and see how many contrasts were significant for each metabolite. (Tip: Reverse sorting by Metabolite will display known metabolites first.)\n") 
+  html_text <- "To view results for a test of interest, click the arrow at the top of the contrast column to sort by contrast or use the search bar to search for a contrast. To see what metabolites were significantly changed for more than one test, sort by metabolite and see how many contrasts were significant for each metabolite. (Tip: Reverse sorting by Metabolite will display known metabolites first.)\n"
 }
+htmltools::HTML(html_text)
 ```
 
 Unknown compounds (those unidentified by our internal metabolite library) were assigned low-confidence metabolite names and KEGG IDs based on mass and the HMDB database as implemented in the R package metid (Shen X 2022). The annotation of these compounds is assigned a confidence value of "3" in downloadable tables and in the report. Compounds identified using our internal library are assigned a confidence value of "1". Compounds that could not be identified via either method are annotated using their m/z_RT values and the confidence level is blank.
@@ -480,9 +482,9 @@ datatable(Client_Data_Download[["report_results"]] %>% filter(abs(log2FC)>1.5) %
 
 ```{r}
 if(test_type == "nostats"){
-  cat("# Visualizations of changed metabolites</span>\n")
+  cat('# Visualizations of changed metabolites</span>\n')
 } else {
-  cat("# Visualizations of significantly changed metabolites</span>\n") 
+  cat('# Visualizations of significantly changed metabolites</span>\n') 
 }
 ```
 
@@ -622,7 +624,7 @@ htmltools::tagList(setNames(barplotlist, NULL))
 ```
 
 ```{r}
-if(test_type == "nostats"){
+if(!test_type == "nostats"){
 
 cat("## Plots of metabolites' fold-change and adjusted p-value for each contrast</span>\n")
 
