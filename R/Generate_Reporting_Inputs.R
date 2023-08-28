@@ -194,7 +194,7 @@ dataset <- data
 #test_type="t.test";subset=list(list("GI_MB_TBI","GII_MB_Sham"),list("GI_CX_TBI","GII_CX_Sham"));lm_model=Metabolite~Class+(1|ID);emmeans_var=~Class;mode="Pos";metid_DB_file="kegg_ms1_database0.0.3.rda";client="Hendrich-Wang"
 #options for metid_DB are kegg_ms1_database0.0.3.rda,"hmdb_database0.0.3.rda,"bloodexposome_database1.0.rda"
 #Example of anova_formula=as.formula(paste("Metabolite ~", "Class","+","Error(ID)"))
-#debug(SECIM_Metabolomics)
+debug(SECIM_Metabolomics)
 neg.output <- SECIM_Metabolomics(dataset=data,peakdata=peakdata,num_meta=num_meta,original_data=data,contrast_var=contrast_var,
   subset=subset,
   anova_formula=anova_formula,lm_model=lm_model,test_type=test_type,emmeans_var=contrast_var,mode="Neg",
