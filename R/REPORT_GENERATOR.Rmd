@@ -310,9 +310,16 @@ grid.arrange(Client_Data_Download[["Neg.SampleView"]][["grobs"]][[1]],Client_Dat
 
 # Statistical analysis</span>
 
-Multivariate and univariate statistical analysis were performed to assess clustering of samples based on metabolomic profiles and to identify metabolites with changes in abundance between groups or biological conditions.
+```{r}
+if(!test_type=="nostats"){
+html_text <- "Multivariate and univariate statistical analysis were performed to assess clustering of samples based on metabolomic profiles and to identify metabolites with changes in abundance between groups or biological conditions.<br><br>"
+}else{
+html_text <- "Multivariate statistical analysis and fold-change analysis were performed to assess clustering of samples based on metabolomic profiles and to identify metabolites with changes in abundance between groups or biological conditions.<br><br>"
+}
+htmltools::HTML(html_text)
+```
 
-Following univariate statistical analysis of all compounds detected in positive and negative ionization modes independently, the list of compounds were combined between negative and positive ionization modes and reduced to a single representative compound per likely metabolite based on p-value (lowest p-value compound retrained).
+Following analysis of all compounds detected in positive and negative ionization modes independently, the list of compounds were combined between negative and positive ionization modes and reduced to a single representative compound per likely metabolite based on p-value (lowest p-value compound retrained).
 
 ## PCA (multivariate analaysis)</span>
 
@@ -372,7 +379,7 @@ fig
 
 `r if(test_type=="t.test"){"For each compound, a t-test was performed using the R package stats (R Core Team 2023) to test the null hypothesis that the mean intensity for group one = the mean intensity for group two. Adjusted p-values are corrected using the FDR method of p-value correction."}`
 
-`r if(test_type=="nostats"){"For each compound, a fold-change analysis was performed using the R package stats (R Core Team 2023)"}`
+`r if(test_type=="nostats"){"For each compound, no statistical analysis was performed. Instead, a fold-change analysis was performed"}`
 
 ```{r,eval=FALSE,order_contrasts}
 contrasts <- contrasts[c(1,2,5,6)]
@@ -446,10 +453,11 @@ if(p_type=="log2FC"){
 
 ```{r}
 if(test_type == "nostats"){
-  cat("## Table of changed metabolites </span>\n")
+  html_text <- "## Table of changed metabolites </span><br>"
 } else {
-  cat("## Table of significantly changed metabolites </span>\n") 
+  html_text <-"## Table of significantly changed metabolites </span><br>"
 }
+htmltools::HTML(html_text)
 ```
 
 `r if(test_type=="nostats"){"Table of metabolites filtered as described above (log2FC > 1.5)."}`
@@ -460,9 +468,9 @@ if(test_type == "nostats"){
 
 ```{r}
 if (test_type == "nostats") {
-  html_text <- "To view results for a test of interest, click the arrow at the top of the contrast column to sort by contrast or use the search bar to search for a contrast. To see what metabolites were changed for more than one contrast, sort by metabolite and see how many contrasts were significant for each metabolite. (Tip: Reverse sorting by Metabolite will display known metabolites first.)\n"
+  html_text <- "To view results for a test of interest, click the arrow at the top of the contrast column to sort by contrast or use the search bar to search for a contrast. To see what metabolites were changed for more than one contrast, sort by metabolite and see how many contrasts were significant for each metabolite. (Tip: Reverse sorting by Metabolite will display known metabolites first.)<br>"
 } else {
-  html_text <- "To view results for a test of interest, click the arrow at the top of the contrast column to sort by contrast or use the search bar to search for a contrast. To see what metabolites were significantly changed for more than one test, sort by metabolite and see how many contrasts were significant for each metabolite. (Tip: Reverse sorting by Metabolite will display known metabolites first.)\n"
+  html_text <- "To view results for a test of interest, click the arrow at the top of the contrast column to sort by contrast or use the search bar to search for a contrast. To see what metabolites were significantly changed for more than one test, sort by metabolite and see how many contrasts were significant for each metabolite. (Tip: Reverse sorting by Metabolite will display known metabolites first.)<br>"
 }
 htmltools::HTML(html_text)
 ```
@@ -480,30 +488,28 @@ datatable(Client_Data_Download[["report_results"]] %>% filter(abs(log2FC)>1.5) %
 }
 ```
 
-```{r}
-if(test_type == "nostats"){
-  cat('# Visualizations of changed metabolites</span>\n')
-} else {
-  cat('# Visualizations of significantly changed metabolites</span>\n') 
-}
-```
+# Visualizations of Changed Metabolites
 
 All plots below can be zoomed, selected, and downloaded individually (and/or as modified) using the toolbar on the top right of the figure (will appear when you hover your mouse). Hover over plot points to view underlying data.
 
+## Barplots of changed metabolites by metabolite KEGG class
+
 ```{r}
 if(test_type == "nostats"){
-  cat("## Barplots of >1.5 log2FC changes by metabolite class </span>\n")
+  html_text <- "Metabolites with >1.5 log2FC change are shown by metabolite class. </span><br><br>"
 } else {
-  cat("## Barplots of significant changes by metabolite class </span>\n") 
+  html_text <- paste0("Metabolites with significant changes (",p_type,"<0.05) are shown by metabolite class.</span><br><br>")
 }
+htmltools::HTML(html_text)
 ```
 
 ```{r}
 if(test_type == "nostats"){
-  cat("Hover over bars to view changed metabolites for each class. (If a contrast is missing, there were no >1.5 log2FC changed metabolites with KEGG IDs for that contrast) </span>\n")
+  html_text <- "Hover over bars to view changed metabolites for each class. (If a contrast is missing, there were no >1.5 log2FC changed metabolites with KEGG IDs for that contrast) </span><br>"
 } else {
-  cat("Hover over bars to view significantly changed metabolites for each class. (If a contrast is missing, there were no significantly changed metabolites with KEGG IDs for that contrast) </span>\n") 
+  html_text <- "Hover over bars to view significantly changed metabolites for each class. (If a contrast is missing, there were no significantly changed metabolites with KEGG IDs for that contrast) </span><br>"
 }
+htmltools::HTML(html_text)
 ```
 
 ```{r,echo=FALSE,message=FALSE,warning=FALSE,fig.dim = c(8, 6),eval=TRUE}
@@ -623,14 +629,21 @@ print("No metabolite classes with significant changes")
 htmltools::tagList(setNames(barplotlist, NULL))
 ```
 
+## Volcano Plots
+
+```{r}
+if(test_type=="nostats"){
+html_text <- "For FC analysis only, no volcano plots are included<br>"
+}
+htmltools::HTML(html_text)
+```
+
 ```{r}
 if(!test_type == "nostats"){
 
-cat("## Plots of metabolites' fold-change and adjusted p-value for each contrast</span>\n")
+html_text <- "Hover over plot points to view compound labels.<br>Metabolites that pass the significance cutoff (but not fold-change) are orange, metabolites that pass the fold-change cutoff (but not significance) are black, and metabolites that pass both the fold-change and significance cutoffs are red. Metabolites in gray do not pass the significance or fold-change cutoff. If a color is missing from the plot, that is because no metabolites fall in that category. Adjusted p-value cutoff is 0.05, Fold-Change cutoff is 1.5.<br>"
 
-cat("Hover over plot points to view compound labels.\n")
-
-cat("Metabolites that pass the significance cutoff (but not fold-change) are orange, metabolites that pass the fold-change cutoff (but not significance) are black, and metabolites that pass both the fold-change and significance cutoffs are red. Metabolites in gray do not pass the significance or fold-change cutoff. If a color is missing from the plot, that is because no metabolites fall in that category. Adjusted p-value cutoff is 0.05, Fold-Change cutoff is 1.5.\n")
+htmltools::HTML(html_text)
 
 cat("```{r,volcano,echo=FALSE,warning=FALSE,message=FALSE,eval=TRUE}\n")
 cat('volcanoplotlist = list()')
@@ -668,12 +681,15 @@ cat("```\n")
 }
 ```
 
+## Per-contrast boxplot of any of the top changed metabolites across sample class</span>\n
+
 ```{r}
 if(test_type == "nostats"){
-  cat("## Per-contrast boxplot of any of the top changed metabolites across sample class</span>\n")
+  html_text <- "Per-contrast boxplot of any of the top changed metabolites across sample class</span><br><br>"
 } else {
-  cat("## Per-contrast boxplot of any of the top significantly changed metabolites across sample class</span>\n") 
+  html_text <- "Per-contrast boxplot of any of the top significantly changed metabolites across sample class</span><br><br>"
 }
+htmltools::HTML(html_text)
 ```
 
 For each contrast, the top changed metabolites are available to view as a boxplot of normalized peak intensity across sample class.
@@ -864,12 +880,15 @@ boxplotlist[[i]]=plot #this works if you just print(plot), the plots are right
 htmltools::tagList(boxplotlist)
 ```
 
+## Heatmaps of changed metabolites
+
 ```{r}
 if(test_type == "nostats"){
-  cat("## Heatmaps of metabolites with greatest log2FC difference in abundance</span>\n")
+  html_text <- "Heatmaps of metabolites with greatest log2FC difference in abundance</span><br><br>"
 } else {
-  cat("## Heatmaps of metabolites with most significant difference in abundance</span>\n") 
+  html_text <- "Heatmaps of metabolites with most significant difference in abundance</span><br><br>"
 }
+htmltools::HTML(html_text)
 ```
 
 For each contrast, the top changed metabolites are available to view as a heatmap of normalized peak intensity. Samples (columns) are clustered by the peak intensities for the displayed set of compounds.
@@ -955,10 +974,11 @@ KEGG analysis was performed with the R package FELLA (https://bmcbioinformatics.
 
 ```{r}
 if(test_type == "nostats"){
-  cat("The most changed (log2FC) compounds input into the KEGG subnetwork analysis are shown with red squares (see key) and are drawn in their KEGG subnetwork. Hover over nodes to view annotation and to see the confidence of our identification of a particular input KEGG compound.\n(If no subnetworks are visible below, there were no >1.5 log2FC changed metabolites with KEGG IDs.)\n")
+  html_text <- "The most changed (log2FC) compounds input into the KEGG subnetwork analysis are shown with red squares (see key) and are drawn in their KEGG subnetwork.<br> Hover over nodes to view annotation and to see the confidence of our identification of a particular input KEGG compound.<br>(If no subnetworks are visible below, there were no >1.5 log2FC changed metabolites with KEGG IDs.)<br><br>"
 } else {
-  cat("The significantly changed compounds input into the KEGG subnetwork analysis are shown with red squares (see key) and are drawn in their KEGG subnetwork. Hover over nodes to view annotation and to see the confidence of our identification of a particular input KEGG compound.\n (If no subnetworks are visible below, there were no significantly changed metabolites with KEGG IDs.)\n") 
+  html_text <- "The significantly changed compounds input into the KEGG subnetwork analysis are shown with red squares (see key) and are drawn in their KEGG subnetwork.<br> Hover over nodes to view annotation and to see the confidence of our identification of a particular input KEGG compound.<br> (If no subnetworks are visible below, there were no significantly changed metabolites with KEGG IDs.)<br><br>"
 }
+htmltools::HTML(html_text)
 ```
 
 Select areas of within this subnetwork to view and export clusters of interest. 
