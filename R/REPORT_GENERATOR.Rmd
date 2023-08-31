@@ -633,8 +633,8 @@ htmltools::tagList(setNames(barplotlist, NULL))
 ```{r}
 if(test_type=="nostats"){
 html_text <- "For FC analysis only, no volcano plots are included<br>"
-}
 htmltools::HTML(html_text)
+}
 ```
 
 ```{r}
@@ -1030,7 +1030,8 @@ if (nrow(get(paste0("sig.up.KEGGs", i, "up"))) > 0) {
       nlimit=250))
   }
   
-  if(length(get(paste0("up.graph", i, "up")))>0) {
+  #if(length(get(paste0("up.graph", i, "up")))>0) 
+    if (exists(paste0("up.graph", i, "up"))) {
     
     assign(paste0("vs", i, "up"),V(get(paste0("up.graph", i, "up")))) #Get node list - this has names
     assign(paste0("es", i, "up"),as.data.frame(get.edgelist(get(paste0("up.graph", i, "up"))))) # Get edgelist
@@ -1259,7 +1260,8 @@ if (nrow(get(paste0("sig.down.KEGGs", i, "down"))) > 0) {
       nlimit=250))
   }
   
-  if(length(get(paste0("down.graph", i, "down")))>0) {
+  #if(length(get(paste0("down.graph", i, "down")))>0) {
+     if (exists(paste0("up.graph", i, "up"))) {
     
     assign(paste0("vs", i, "down"),V(get(paste0("down.graph", i, "down")))) #Get node list - this has names
     assign(paste0("es", i, "down"),as.data.frame(get.edgelist(get(paste0("down.graph", i, "down"))))) # Get edgelist

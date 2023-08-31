@@ -166,7 +166,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
           #fit <- aov(as.formula(anova_formula), data = tempdf)
           fit <- do.call(aov, args = list(anova_formula, tempdf))
           #if("ALL" %in% emmeans_contrasts){
-          emmeans_obj <- tidy(pairs(emmeans(fit,emmeans_var,data=tempdf),adjust = "bonf"))
+          emmeans_obj <- tidy(pairs(emmeans(fit,emmeans_var,data=tempdf)))
           list(fit = fit, emmeans = emmeans_obj)
         }
         # Extract fit and emmeans from the list
