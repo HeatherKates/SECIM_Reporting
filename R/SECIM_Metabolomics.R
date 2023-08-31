@@ -232,7 +232,10 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
     contrast_vec <- combn(levels(as.factor(metadata$Class)), 2, FUN = function(x) paste0(x[1], "-", x[2]), simplify = FALSE)
   }
   
-  group_vec <- unique(unlist(sapply(as.list(contrast_vec),function(x) str_split(x,"-"))))
+  if (test_type == "nostats"){
+    group_vec <- unique(unlist(sapply(as.list(contrast_vec),function(x) str_split(x,"-"))))} else {
+  group_vec <- unique(unlist(sapply(as.list(contrast_vec),function(x) str_split(x," - "))))
+    }
 
   
   for (i in 1:length(group_vec)){
