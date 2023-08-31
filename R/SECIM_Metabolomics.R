@@ -111,6 +111,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   ###############
   
   if (test_type=="t.test"){
+    print(contrast_var)
     #Step7: Stats, T-test
     ttest=list()
     ttest <- foreach (i = (num_meta+1):nrow(data.final),.packages=c("dplyr","stats"))%do% {
@@ -234,7 +235,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   
   if (test_type == "nostats"){
     group_vec <- unique(unlist(sapply(as.list(contrast_vec),function(x) str_split(x,"-"))))} else {
-  group_vec <- unique(unlist(sapply(as.list(contrast_vec),function(x) str_split(x," - "))))
+  group_vec <- unique(unlist(sapply(as.list(contrast_vec),function(x) str_split(x,"-"))))
     }
 
   
