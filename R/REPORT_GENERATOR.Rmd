@@ -644,39 +644,39 @@ html_text <- "Hover over plot points to view compound labels.<br>Metabolites tha
 
 htmltools::HTML(html_text)
 
-cat("```{r,volcano,echo=FALSE,warning=FALSE,message=FALSE,eval=TRUE}\n")
-cat('volcanoplotlist = list()')
-cat('for (i in 1:length(contrasts)){\n')
-cat('## Volcano Plot\n')
-cat('volcano.res <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])\n')
-cat('#### Volcano plot of metabolites\' fold-change highlights metabolites with different abundances between groups\n')
-cat('# Hover over points to view significantly metabolite names\n')
-cat('# add a grouping column; default value is "not significant"\n')
-cat('volcano.res$group <- "NotSignificant"\n')
-cat('\n')
-cat('# change the grouping for the entries with significance but not a large enough log2FC change\n')
-cat('volcano.res[which(volcano.res$compound %in% sig_peaks[[i]] & volcano.res$row.ID %in% sig_peaks_rowID[[i]] & abs(volcano.res[\'log2FC\']) < 0.58 ),"group"] <- "Significant"\n')
-cat('\n')
-cat('# change the grouping for the entries a large enough log2FC change but not a low enough p value\n')
-cat('volcano.res[which(abs(volcano.res[\'log2FC\']) > 0.58 ),"group"] <- "log2FC"\n')
-cat('\n')
-cat('# change the grouping for the entries with both significance and large enough log2FC change > 0.58\n')
-cat('volcano.res[which(volcano.res$compound %in% sig_peaks[[i]]  & abs(volcano.res[\'log2FC\']) > 0.58 ),"group"] <- "Significant&log2FC"\n')
-cat('\n')
-cat('# make the Plot.ly plot\n')
-cat('p <- plot_ly(data = volcano.res, x = volcano.res$log2FC, y = -log10(volcano.res[[p_type]]),hoverinfo = "text", text = paste(volcano.res$compound,volcano.res$Level,sep=":"),\n')
-cat('             mode = "markers", color = volcano.res$group,colors = c(log2FC="black",NotSignificant="gray",Significant="orange",`Significant&log2FC`="red")) %>% \n')
-cat('  layout(title=paste("P-value vs. Fold-Change in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",\n')
-cat('                            str_split(contrasts[[i]],pattern="-")[[1]][2]),\n')
-cat('         xaxis = list(title = \'log2FC\'), \n')
-cat('         yaxis = list(title = \'-log10PVal\'),margin = list(l = 75, t = 150))\n')
-cat('\n')
-cat('margin = list(l = 75, t = 150)\n')
-cat('\n')
-cat('volcanoplotlist[[i]]=p\n')
-cat(' }\n')
-cat('htmltools::tagList(setNames(volcanoplotlist, NULL))\n')
-cat("```\n")
+#,fig.height=20,fig.width=8
+volcanoplotlist = list()
+for (i in 1:length(contrasts)){
+##Volcano Plot
+volcano.res <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])
+
+#### Volcano plot of metabolites' fold-change highlights metabolites with different abundances between groups
+#Hover over points to view significantly metabolite names
+# add a grouping column; default value is "not significant"
+volcano.res$group <- "NotSignificant"
+
+# change the grouping for the entries with significance but not a large enough log2FC change
+volcano.res[which(volcano.res$compound %in% sig_peaks[[i]] & volcano.res$row.ID %in% sig_peaks_rowID[[i]] & abs(volcano.res['log2FC']) < 0.58 ),"group"] <- "Significant"
+
+# change the grouping for the entries a large enough log2FC change but not a low enough p value
+volcano.res[which(abs(volcano.res['log2FC']) > 0.58 ),"group"] <- "log2FC"
+
+# change the grouping for the entries with both significance and large enough log2FC change > 0.58
+volcano.res[which(volcano.res$compound %in% sig_peaks[[i]]  & abs(volcano.res['log2FC']) > 0.58 ),"group"] <- "Significant&log2FC"
+
+# make the Plot.ly plot
+p <- plot_ly(data = volcano.res, x = volcano.res$log2FC, y = -log10(volcano.res[[p_type]]),hoverinfo = "text", text = paste(volcano.res$compound,volcano.res$Level,sep=":"),
+             mode = "markers", color = volcano.res$group,colors = c(log2FC="black",NotSignificant="gray",Significant="orange",`Significant&log2FC`="red")) %>% 
+  layout(title=paste("P-value vs. Fold-Change in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
+                            str_split(contrasts[[i]],pattern="-")[[1]][2]),
+         xaxis = list(title = 'log2FC'), 
+         yaxis = list(title = '-log10PVal'),margin = list(l = 75, t = 150))
+
+    margin = list(l = 75, t = 150)
+
+volcanoplotlist[[i]]=p
+ }
+htmltools::tagList(setNames(volcanoplotlist, NULL))
 }
 ```
 
@@ -1216,11 +1216,11 @@ upnetworklist[[i]] <-
     if(test_type=="nostats"){
      cat(paste("No KEGG subnetwork found for metabolites more abundant in",
               str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
-              str_split(contrasts[[i]],pattern="-")[[1]][2])) 
+              str_split(contrasts[[i]],pattern="-")[[1]][2]),"\n") 
     }else{
     cat(paste("No KEGG subnetwork found for metabolites significantly more abundant in",
               str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
-              str_split(contrasts[[i]],pattern="-")[[1]][2]))
+              str_split(contrasts[[i]],pattern="-")[[1]][2]),"\n")
     }
   }
 
@@ -1444,11 +1444,11 @@ downnetworklist[[i]] <-
     if(test_type=="nostats"){
      cat(paste("No KEGG subnetwork found for metabolites less abundant in",
               str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
-              str_split(contrasts[[i]],pattern="-")[[1]][2])) 
+              str_split(contrasts[[i]],pattern="-")[[1]][2]),"\n") 
     }else{
     cat(paste("No KEGG subnetwork found for metabolites significantly less abundant in",
               str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
-              str_split(contrasts[[i]],pattern="-")[[1]][2]))
+              str_split(contrasts[[i]],pattern="-")[[1]][2]),"\n")
     }
   }
 }
