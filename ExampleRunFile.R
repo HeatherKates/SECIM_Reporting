@@ -5,7 +5,7 @@ source("SECIM_Reporting/R/Generate_Reporting_Inputs.R")
 client="Dudeja.Serum.ttest"
 
 #Create the Reporting Input
-ReportInput <- Generate_Report_Inputs(client="Dudeja.Serum.FC",samples_to_drop=NULL,mzmine_version=2,
+ReportInput <- Generate_Report_Inputs(client=client,samples_to_drop=NULL,mzmine_version=2,
                                                ReferenceLevel="Serum_WT",
                                       Input="SECIM_Reporting/InputFiles/Dudeja-Metabolomics_Serum.xlsx",
                                                contrast_var="Class",num_meta=1,
