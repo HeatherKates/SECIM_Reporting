@@ -2,7 +2,7 @@ library(rmarkdown)
 source("SECIM_Reporting/R/Generate_Reporting_Inputs.R")
 
 #test_type = "t.test","anova","lm","lme","nostats"
-client="Dudeja.Serum.nostats"
+client="Dudeja.Serum.ttest"
 
 #Create the Reporting Input
 ReportInput <- Generate_Report_Inputs(client="Dudeja.Serum.FC",samples_to_drop=NULL,mzmine_version=2,
@@ -10,7 +10,7 @@ ReportInput <- Generate_Report_Inputs(client="Dudeja.Serum.FC",samples_to_drop=N
                                       Input="SECIM_Reporting/InputFiles/Dudeja-Metabolomics_Serum.xlsx",
                                                contrast_var="Class",num_meta=1,
                                       anova_formula=NULL,lm_model=NULL,
-                                               test_type="nostats",subset=NULL,
+                                               test_type="t.test",subset=NULL,
                                       metid_DB_file="SECIM_Reporting/InputFiles/kegg_ms1_database0.0.3.rda")
 #saveRDS(ReportInput,file=paste0(client,".ReportingInput.",Sys.Date(),".RDATA"))
 
@@ -27,7 +27,7 @@ num_groups=2
 contrast_var="Class"
 boxplot_var=~Class
 #class_order <- levels(as.factor(Client_Data_Download[["metadata"]]$Class))
-test_type="nostats" #"t.test", "anova", "lmm","repeated_measures_anova","nostats"
+test_type="t.test" #"t.test", "anova", "lmm","repeated_measures_anova","nostats"
 class_order <- c("Serum_WT","Serum_KO")
 drop_compounds <- c("Sodium bicarbonate")
 
