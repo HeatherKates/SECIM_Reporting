@@ -417,7 +417,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
                              paste0(mode,".normalized.data"),paste0(mode,".FeatureView"),paste0(mode,".SampleView"),"metadata")
   } 
   if (test_type %in% c("anova","lm","lme")){
-    names(outputs_list) <- c(paste0(mode,".fit.results.metab"),paste0(mode,".emmeans.results.metab"),
+    names(outputs_list) <- c(paste0(mode,".emmeans.results.metab"),paste0(mode,".fit.results.metab"),
                              paste0(mode,".processed.data"),
                              paste0(mode,".normalized.data"),paste0(mode,".FeatureView"),paste0(mode,".SampleView"),"metadata")
   }
