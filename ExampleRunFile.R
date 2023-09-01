@@ -2,15 +2,15 @@ library(rmarkdown)
 source("SECIM_Reporting/R/Generate_Reporting_Inputs.R")
 
 #test_type = "t.test","anova","lm","lme","nostats"
-client="Dudeja.Serum.ttest"
-
+client="Dudeja.Serum.anova.rm"
+#anova_formula= Metabolite ~ Class
 #Create the Reporting Input
 ReportInput <- Generate_Report_Inputs(client=client,samples_to_drop=NULL,mzmine_version=2,
-                                               ReferenceLevel="Serum_WT",
-                                      Input="SECIM_Reporting/InputFiles/Dudeja-Metabolomics_Serum.xlsx",
-                                               contrast_var="Class",num_meta=1,
-                                      anova_formula=NULL,lm_model=NULL,
-                                               test_type="t.test",subset=NULL,
+                                               ReferenceLevel="Serum_WT_pre",
+                                      Input="SECIM_Reporting/InputFiles/Dudeja-Metabolomics_Serum.mini.anova.repeatedmeasures.xlsx",
+                                               contrast_var="Class",num_meta=2,
+                                      anova_formula= id ~ Class + (ID),lm_model=NULL,
+                                               test_type="anova",subset=NULL,
                                       metid_DB_file="SECIM_Reporting/InputFiles/kegg_ms1_database0.0.3.rda")
 #saveRDS(ReportInput,file=paste0(client,".ReportingInput.",Sys.Date(),".RDATA"))
 
@@ -21,14 +21,14 @@ Grouping_Variable="Class"
 filter_method="IQR"
 norm_method="Sum"
 ind_var="Class"
-num_of_metadata <- 2 #includes sample names
-num_samples=10
-num_groups=2
+num_of_metadata <- 3 #includes sample names
+num_samples=8
+num_groups=4
 contrast_var="Class"
 boxplot_var=~Class
 #class_order <- levels(as.factor(Client_Data_Download[["metadata"]]$Class))
-test_type="t.test" #"t.test", "anova", "lmm","repeated_measures_anova","nostats"
-class_order <- c("Serum_WT","Serum_KO")
+test_type="repeated_measures_anova" #"t.test", "anova", "lmm","repeated_measures_anova","nostats"
+#class_order <- c("Serum_WT","Serum_KO")
 drop_compounds <- c("Sodium bicarbonate")
 
 PI <- "Dudeja"
