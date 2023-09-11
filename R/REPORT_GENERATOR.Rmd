@@ -148,7 +148,7 @@ Study Summary: `r StudySummary`
 
 ## Sample Information</span>
 
-The PI provided `r {nrow(Client_Data_Download$metadata)}` samples.
+The PI provided `r {nrow(Client_Data_Download$metadata)}` `r SampleType` samples.
 
 ```{r}
 datatable(data.frame(table(Client_Data_Download$metadata$Class)), 
