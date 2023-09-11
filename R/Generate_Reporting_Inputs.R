@@ -98,23 +98,6 @@ if("internal_ID" %in% colnames(peakdata)){
 #################################################
 ######Steps to process column names #############
 #################################################
-#Custom steps
-#metadata <- metadata %>% filter(!Class=="RCP")
-#For any data formatted by mzmine v2:
-####BEGIN######
-colnames(peakdata) <- gsub(".*_(\\d+\\[.*?\\]).*", "\\1", colnames(peakdata))
-colnames(peakdata) <- gsub("\\[|\\]", "_", colnames(peakdata))
-colnames(peakdata) <- gsub("_$","",colnames(peakdata))
-metadata$Sample.Name <- gsub("\\[|\\]", "_",metadata$Sample.Name)
-metadata$Sample.Name <- gsub("_$", "",metadata$Sample.Name)
-#####END#######
-
-#For any data formated by mzmine v3
-####BEGIN####
-#Removes anything after a literal "." followed by p or n followed by "." followed by anything - if there is ever a dash used instead of dot need to update
-colnames(peakdata) <- gsub("[\\._][pn]\\.*.*", "", colnames(peakdata))
-
-####END####
 
 #If there are duplicate colnames, make them unique and print a warning
 # Check for duplicate column names
@@ -132,6 +115,7 @@ if (any(duplicated(colnames(peakdata)))) {
 }
 #v10 Replace "-" with "_" in sample names because metaboanalyst will convert one and mess it up
 colnames(peakdata) <- gsub("-","_",colnames(peakdata))
+metadata$Sample.Name <- gsub("-","_",metadata$Sample.Name)
 
 
 #Remove any rows with "adduct" in the fourth column
@@ -147,11 +131,6 @@ if(mzmine_version==2){
 #################################################
 ######Steps to process metadata #################
 #################################################
-
-metadata$Sample.Name <- gsub("[._][pn]\\.*.*", "",metadata$Sample.Name)
-#Custom for Abisambra's sample names
-metadata$Sample.Name <- gsub("\\.$", "",metadata$Sample.Name)
-metadata$Sample.Name <- gsub("-", "_",metadata$Sample.Name)
 
 #Custom: if needed, add an A to the beginning of reference groups - should phase this out by updating v10 to set reference group/custom contrasts even for pairwise=TRUE
 if(!is.null(ReferenceLevel)){
@@ -171,11 +150,19 @@ if (length(samples_to_drop)>0){
 #################################################
 #Create the data object by rbinding the metadata and peak data
 #assume there are four cols before samples
-#Custom for Atkinson negative peakdata columns removes accidentally duplicated injection numbers
-colnames(peakdata) <- gsub("^(\\d+)_\\1_", "\\1_",colnames(peakdata))
-#Removes the instrument_technician_run_ at the start of each colname
-colnames(peakdata) <- gsub("^QE\\d_[A-z]+_\\d+_","",colnames(peakdata))
-peakdata <- peakdata %>% dplyr::select(c(1:4,metadata$Sample.Name)) 
+# Indices of columns from peakdata that match any Sample.Name from metadata
+matching_indices <- unlist(lapply(metadata$Sample.Name, function(x) {
+  grep(x, colnames(peakdata))
+}))
+
+# Keep only columns 1:4 and the matched columns
+peakdata <- peakdata[, c(1:4, matching_indices)]
+
+# Rename the columns after the 4th to only have the Sample.Name
+colnames(peakdata)[5:ncol(peakdata)] <- metadata$Sample.Name
+
+# Check if the column names after the 4th match the Sample.Name from metadata
+
 
 peaks <- peakdata[,metadata$Sample.Name]
 data <- data.frame(t(rbind(c(colnames(metadata),peakdata$id),merge(metadata,data.frame(t(peaks)),by.x="Sample.Name",by.y=0))))
