@@ -72,6 +72,8 @@ library(plyr)
 library(dplyr)
 library(plotly)
 library(htmltools)
+library(car)
+
 #source("Report_params.template.R") #Get variables
 Client_Data_Download <- ReportInput
 
@@ -325,35 +327,70 @@ Following analysis of all compounds detected in positive and negative ionization
 Principal component analysis of untargeted metabolomics data. Two-dimensional PCA score plots reveal possible separation in metabolite profiles related to variables of interest.
 
 ```{r}
-#Subset the transformed data only to those compounds in the reported data
-#Bind negative and positive normalized peak intensity data together; remove metadata and metabolite name columns and rows PER REPORT this number 
-#version update 2.1 the way the PCA is done is corrected
-DATA <- t(rbind(
+PCA_DATA <- data.frame(cbind(colnames(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata-1),(num_of_metadata+1):(num_samples+2)])),
+                       t(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata-1),(num_of_metadata+1):(num_samples+2)]),
+                             t(rbind(
   Client_Data_Download[["Pos.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Pos.normalized.data"]]),3:(num_samples+2)],
   Client_Data_Download[["Neg.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Neg.normalized.data"]]),3:(num_samples+2)]))
+  )
 
-#Convert to numeric
-DATA <- matrix(as.numeric(DATA),    # Convert to numeric matrix
-                  ncol = ncol(DATA))
-#DATA[is.na(DATA)] <- 0 #In case normalization introduced a few NAs
-prin_comp <- prcomp(DATA, rank. = 2)
-components <- prin_comp[["x"]]
-components <- data.frame(components)
-#Add the sample names and types
-components <- cbind(components,
-                    t(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata-1),3:(num_samples+2)]),
-                    colnames(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata-1),3:(num_samples+2)])
-                    )
-colnames(components) <- c("PC1","PC2",contrast_var,"Samples")
-components$PC2 <- -components$PC2
-#CUSTOM
-#cols=RColorBrewer::brewer.pal(n=length(levels(as.factor(Client_Data_Download[["Sample_Data"]][[ind_var]]))),name="Set2")
-palette <- c("red","blue","black","green","purple","orange","lightblue","magenta","lightpink")
+PCA_DATA[] <- lapply(PCA_DATA, function(col) {
+  # Try to convert to numeric
+  numeric_col <- suppressWarnings(as.numeric(col))
+  
+  # If there are no NAs after the conversion or the original column was all NAs
+  if (!any(is.na(numeric_col)) || all(is.na(col))) {
+    return(numeric_col)
+  } else {
+    return(col)
+  }
+})
 
-if(length(class_order)>0){
-components[[contrast_var]] <- factor(components[[contrast_var]], levels = class_order)
+# PCA
+pca_res <- prcomp(PCA_DATA[,-c(1:num_of_metadata)], center = TRUE, scale. = TRUE)
+scores <- pca_res$x
+
+# Create a basic plotly scatter plot
+fig <- plot_ly()
+
+colors <- RColorBrewer::brewer.pal(9, "Set1")
+
+# First, add all the ellipses
+for(target in unique(PCA_DATA$X1)) {
+  target_data <- as.data.frame(scores[PCA_DATA$X1 == target, 1:2])
+  target_color <- colors[which(as.character(unique(PCA_DATA$X1)) == target)]
+  
+  # Ellipse
+  ellipse_coords <- car::dataEllipse(target_data$PC1, target_data$PC2, 
+                                     levels = 0.68, # roughly corresponds to 1 std dev
+                                     plot.points = FALSE, add = TRUE, draw = FALSE)
+  
+  fig <- fig %>% 
+    add_polygons(x = ellipse_coords[,1], y = ellipse_coords[,2],
+                 line = list(color = target_color, dash = "dot"),
+                 fillcolor = target_color, opacity = 0.3,
+                 showlegend = F,
+                 hoverinfo = "skip")  # this tells plotly not to show any hover information for the ellipses
 }
-fig <- plot_ly(components, x = ~PC1, y = ~PC2, color = ~components[[contrast_var]], colors = palette[1:num_groups], type = 'scatter', mode = 'markers',hoverinfo = "text",hovertext = paste(components[[contrast_var]],components$Samples,sep="\n"), marker=list(sizeref=10, sizemode="area"))%>%
+
+# Then, add all the points on top
+for(target in unique(PCA_DATA$X1)) {
+  target_data <- as.data.frame(scores[PCA_DATA$X1 == target, 1:2])
+  target_color <- colors[which(as.character(unique(PCA_DATA$X1)) == target)]
+  
+  # Scatter points
+  fig <- fig %>% 
+    add_trace(data = as.data.frame(target_data),
+              x = ~PC1, y = ~PC2, 
+              type = "scatter",
+              mode = "markers",
+              name = target,
+              marker = list(color = target_color),
+              text = ~rownames(target_data),
+              hoverinfo = "text")  # this tells plotly to display the text when hovering
+}
+
+fig %>%
   layout(
     legend=list(title=list(text='color')),
     plot_bgcolor='#e5ecf6',
@@ -367,7 +404,6 @@ fig <- plot_ly(components, x = ~PC1, y = ~PC2, color = ~components[[contrast_var
       zerolinecolor = "#ffff",
       zerolinewidth = 2,
       gridcolor='#ffff'),title="PCA")
-fig
 ```
 
 ## Univariate analysis </span>
