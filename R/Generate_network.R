@@ -107,11 +107,12 @@ generate_network <- function(i, mydata,dir,dir_word) {
   names(mydata[[paste("Yn",dir,sep=".")]][[i]]) <-  names(mydata[[paste("vs",dir,sep=".")]][[i]])
   
   
-  for (j in 1:mydata[[paste("Ne",dir,sep=".")]][[i]]) {
+  # Define the function to be applied for each j
+  calculate_edge_shape <- function(j) {
     v0 <- as.character(mydata[[paste("es",dir,sep=".")]][[i]][j,]$V1)
     v1 <- as.character(mydata[[paste("es",dir,sep=".")]][[i]][j,]$V2)
     
-    mydata[["edge_shape"]][[i]]<- list(
+    list(
       type = "line",
       line = list(color = "red", width = 0.3),
       x0 = mydata[[paste("Xn",dir,sep=".")]][[i]][v0],
@@ -119,9 +120,14 @@ generate_network <- function(i, mydata,dir,dir_word) {
       x1 = mydata[[paste("Xn",dir,sep=".")]][[i]][v1],
       y1 = mydata[[paste("Yn",dir,sep=".")]][[i]][v1]
     )
-    
-    mydata[["edge_shapes"]][[i]][[j]] <- mydata[["edge_shape"]][[i]]  # Add edge_shape to the list
   }
+  
+  # Use lapply to apply the function
+  edge_shapes_list <- lapply(1:mydata[[paste("Ne",dir,sep=".")]][[i]], calculate_edge_shape)
+  
+  # Assign the result back to mydata
+  mydata[["edge_shapes"]][[i]] <- edge_shapes_list
+  
   
   mydata[[paste("edge_shapes",dir,sep=".")]][[i]] <-  mydata[["edge_shapes"]][[i]]  # Assign the list to your target variable
   mydata[[paste("axis",dir,sep=".")]][[i]] <- list(title = "", showgrid = FALSE, 
