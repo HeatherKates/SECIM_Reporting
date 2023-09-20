@@ -405,7 +405,20 @@ for(trace in traces_list) {
                    opacity = trace$opacity, showlegend = trace$showlegend, hoverinfo = trace$hoverinfo, 
                    text = trace$text, name = trace$name, marker = trace$marker)
 }
-fig
+fig %>%
+  layout(
+    legend=list(title=list(text='color')),
+    plot_bgcolor='#e5ecf6',
+    xaxis = list(
+      title = "0",
+      zerolinecolor = "#ffff",
+      zerolinewidth = 2,
+      gridcolor='#ffff'),
+    yaxis = list(
+      title = "1",
+      zerolinecolor = "#ffff",
+      zerolinewidth = 2,
+      gridcolor='#ffff'),title="PCA")
 ```
 
 ## Univariate analysis </span>
@@ -1048,12 +1061,14 @@ network_data <- lapply(network_data, function(x) {
     return(x)
 })
 
+elements_list <- setNames(replicate(length(contrasts), NULL, simplify = FALSE),
+                          paste0("element", 1:length(contrasts)))
+
 network_data <- setNames(
-  lapply(vars_created, function(x) {
-    list(element1 = NULL, element2 = NULL, element3 = NULL)
-  }),
+  lapply(vars_created, function(x) elements_list),
   vars_created
 )
+
 
 source("Generate_network.R")
 
@@ -1105,6 +1120,7 @@ for (i in 1:length(contrasts)){
     # Force the evaluation 
     print(network_data[["upnetwork"]][[i]])
     }
+
   #End the big code block that is only run if there is a graph                                                   
   
   #If statement #4: Once all is said and done, the plot needs to be added as an element to the networklist object 
