@@ -1069,7 +1069,6 @@ network_data <- setNames(
   vars_created
 )
 
-
 source("Generate_network.R")
 
 for (i in 1:length(contrasts)){
