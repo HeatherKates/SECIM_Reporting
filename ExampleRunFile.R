@@ -2,12 +2,12 @@ library(rmarkdown)
 source("SECIM_Reporting/R/Generate_Reporting_Inputs.R")
 
 #test_type = "t.test","anova","lm","lme","nostats"
-client="Dudeja.Serum"
+client="Example"
 #anova_formula= Metabolite ~ Class
 #Create the Reporting Input
 ReportInput <- Generate_Report_Inputs(client=client,samples_to_drop=NULL,mzmine_version=2,
                                                ReferenceLevel="Serum_WT_pre",
-                                      Input="SECIM_Reporting/InputFiles/Dudeja-Metabolomics_Serum.mini.anova.xlsx",
+                                      Input="SECIM_Reporting/InputFiles/Metabolomics.mini.anova.xlsx",
                                                contrast_var="Class",num_meta=1,
                                       anova_formula= id ~ Class,lm_model=NULL,
                                                test_type="anova",subset=NULL,
@@ -31,14 +31,14 @@ test_type="anova" #"t.test", "anova", "lmm","repeated_measures_anova","nostats"
 #class_order <- c("Serum_WT","Serum_KO")
 drop_compounds <- c("Sodium bicarbonate")
 
-PI <- "Dudeja"
-Institution <- ""
-Department <- ""
-StudyContact <-"" 
-Project <- ""
-StudyTitle <- ""
-Hypothesis <- ""
-StudySummary <- ""
+PI <- "Example PI name"
+Institution <- "Example Institution Name"
+Department <- "Example Department"
+StudyContact <-"Example Study Contact" 
+Project <- "Example Project"
+StudyTitle <- "Example Study Title"
+Hypothesis <- "Example Hypothesis"
+StudySummary <- "Example Study Summary"
 
 #Run the Report Generator
 render("SECIM_Reporting/R/REPORT_GENERATOR.Rmd", output_file = paste0(client,".Report.html"))
