@@ -1109,8 +1109,8 @@ for (i in 1:length(contrasts)){
     method = "diffusion",
     thresholdConnectedComponent = 0.05,
     threshold= 0.05,
-    nlimit=250)
-    }
+    nlimit=400)
+  }
   
   # If statement #3: main code block if statement is necessary because even if there is a FELLA object, there could still be no graph
   if (!is.null(network_data[["up.graph"]][[i]])) {
@@ -1178,7 +1178,7 @@ for (i in 1:length(contrasts)){
     method = "diffusion",
     thresholdConnectedComponent = 0.05,
     threshold= 0.05,
-    nlimit=250)
+    nlimit=400)
     }
   
   # If statement #3: main code block if statement is necessary because even if there is a FELLA object, there could still be no graph

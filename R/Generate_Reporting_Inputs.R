@@ -80,13 +80,13 @@ if("internal_ID" %in% colnames(peakdata)){
   peakdata$`spectral_ID` <- ifelse(!is.na(peakdata$`spectral_ID`) & !is.na(peakdata$`internal_ID`), "", peakdata$`spectral_ID`)
 
   # 4) Combine columns "A" and "B" into a single column named "row identify (main ID)" by populating that column with whichever column "A" or "B" is not empty for each row.
-  peakdata$compound_name <- ifelse(!is.na(peakdata$`internal_ID`), peakdata$`internal_ID`, peakdata$`spectral_ID`)
+  peakdata$compound <- ifelse(!is.na(peakdata$`internal_ID`), peakdata$`internal_ID`, peakdata$`spectral_ID`)
 
   # Remove the original columns "A" and "B"
   peakdata <- peakdata[, !(names(peakdata) %in% c("internal_ID", "spectral_ID"))]
 
   #Move the compound_name to the position that is normal
-  peakdata <- peakdata %>% relocate(compound_name,.after=mz)
+  peakdata <- peakdata %>% relocate(compound,.after=mz)
 
   #Save the confidence information to be added back after stats
   Neg_pre_stats_conf_levels <- peakdata %>% select(`id`,Confidence)
@@ -225,13 +225,13 @@ if("internal_ID" %in% colnames(peakdata)){
   peakdata$`spectral_ID` <- ifelse(!is.na(peakdata$`spectral_ID`) & !is.na(peakdata$`internal_ID`), "", peakdata$`spectral_ID`)
   
   # 4) Combine columns "A" and "B" into a single column named "row identify (main ID)" by populating that column with whichever column "A" or "B" is not empty for each row.
-  peakdata$compound_name <- ifelse(!is.na(peakdata$`internal_ID`), peakdata$`internal_ID`, peakdata$`spectral_ID`)
+  peakdata$compound <- ifelse(!is.na(peakdata$`internal_ID`), peakdata$`internal_ID`, peakdata$`spectral_ID`)
   
   # Remove the original columns "A" and "B"
   peakdata <- peakdata[, !(names(peakdata) %in% c("internal_ID", "spectral_ID"))]
   
   #Move the compound_name to the position that is normal
-  peakdata <- peakdata %>% relocate(compound_name,.after=mz)
+  peakdata <- peakdata %>% relocate(compound,.after=mz)
   
   #Save the confidence information to be added back after stats
   Pos_pre_stats_conf_levels <- peakdata %>% select(`id`,Confidence)
