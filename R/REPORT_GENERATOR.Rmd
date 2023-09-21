@@ -351,60 +351,49 @@ pca_res <- prcomp(PCA_DATA[,-c(1:num_of_metadata)], center = TRUE, scale. = TRUE
 scores <- pca_res$x
 
 
+colors <- RColorBrewer::brewer.pal(num_groups, "Set1")
+
 # Create a basic plotly scatter plot
 fig <- plot_ly()
 
-colors <- RColorBrewer::brewer.pal(3, "Set1")
-
-traces_list <- list()
-
+# First, add all the ellipses
 for(target in unique(PCA_DATA$X1)) {
   target_data <- as.data.frame(scores[PCA_DATA$X1 == target, 1:2])
   target_color <- colors[which(as.character(unique(PCA_DATA$X1)) == target)]
-  
-  # Scatter points
-  scatter_trace <- list(
-    type = "scatter",
-    mode = "markers",
-    x = target_data$PC1,
-    y = target_data$PC2,
-    name = target,
-    marker = list(color = target_color),
-    text = PCA_DATA[1]
-  )
-  
-  traces_list <- append(traces_list, list(scatter_trace))
-  
+
   # Ellipse
   ellipse_coords <- car::dataEllipse(target_data$PC1, target_data$PC2, 
                                      levels = 0.68, # roughly corresponds to 1 std dev
                                      plot.points = FALSE, add = TRUE, draw = FALSE)
   
-  ellipse_trace <- list(
-    type = "scatter",
-    mode = "lines",
-    x = ellipse_coords[,1],
-    y = ellipse_coords[,2],
-    line = list(color = target_color, dash = "dot"),
-    fill = 'toself',
-    fillcolor = target_color,
-    opacity = 0.3,
-    showlegend = F,
-    hoverinfo = "text",
-    text = target
-  )
-  
-  traces_list <- append(traces_list, list(ellipse_trace))
+  fig <- fig %>% 
+    add_polygons(x = ellipse_coords[,1], y = ellipse_coords[,2],
+                 line = list(color = target_color, dash = "dot"),
+                 fillcolor = target_color, opacity = 0.3,
+                 showlegend = F,
+                 hoverinfo = "skip")  # this tells plotly not to show any hover information for the ellipses
 }
 
-# Plot all the traces using plot_ly
-fig <- plot_ly()
-for(trace in traces_list) {
-  fig <- add_trace(fig, type = trace$type, mode = trace$mode, x = trace$x, y = trace$y, 
-                   line = trace$line, fill = trace$fill, fillcolor = trace$fillcolor, 
-                   opacity = trace$opacity, showlegend = trace$showlegend, hoverinfo = trace$hoverinfo, 
-                   text = trace$text, name = trace$name, marker = trace$marker)
+# Then, add all the points on top
+for(target in unique(PCA_DATA$X1)) {
+  target_data <- as.data.frame(scores[PCA_DATA$X1 == target, 1:2])
+  target_color <- colors[which(as.character(unique(PCA_DATA$X1)) == target)]
+
+  # Scatter points
+  fig <- fig %>% 
+    add_trace(data = as.data.frame(target_data),
+              x = ~PC1, y = ~PC2, 
+              type = "scatter",
+              mode = "markers",
+              name = target,
+              marker = list(color = target_color),
+              text = ~rownames(target_data),
+              hoverinfo = "text")  # this tells plotly to display the text when hovering
 }
+
+fig
+
+
 fig %>%
   layout(
     legend=list(title=list(text='color')),
