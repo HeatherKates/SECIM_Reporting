@@ -39,6 +39,7 @@ Project <- "Example Project"
 StudyTitle <- "Example Study Title"
 Hypothesis <- "Example Hypothesis"
 StudySummary <- "Example Study Summary"
+SampleType <- "Example Sample Type"
 
 #Run the Report Generator
 render("SECIM_Reporting/R/REPORT_GENERATOR.Rmd", output_file = paste0(client,".Report.html"))

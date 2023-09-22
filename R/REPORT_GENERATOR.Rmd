@@ -324,7 +324,7 @@ Following analysis of all compounds detected in positive and negative ionization
 
 ## PCA (multivariate analaysis)</span>
 
-Principal component analysis of untargeted metabolomics data. Two-dimensional PCA score plots reveal possible separation in metabolite profiles related to variables of interest.
+Principal component analysis of untargeted metabolomics data. Two-dimensional PCA score plots reveal possible separation in metabolite profiles related to variables of interest. Ellipses are calculated using the R package car (Fox J. and Weisberg S. 2019) and ~1 Std dev.
 
 ```{r}
 PCA_DATA <- data.frame(cbind(colnames(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata-1),(num_of_metadata+1):(num_samples+2)])),
@@ -390,10 +390,6 @@ for(target in unique(PCA_DATA$X1)) {
               text = ~rownames(target_data),
               hoverinfo = "text")  # this tells plotly to display the text when hovering
 }
-
-fig
-
-
 fig %>%
   layout(
     legend=list(title=list(text='color')),
