@@ -154,8 +154,10 @@ if (length(samples_to_drop)>0){
 #assume there are four cols before samples
 # Indices of columns from peakdata that match any Sample.Name from metadata
 matching_indices <- unlist(lapply(metadata$Sample.Name, function(x) {
-  grep(paste0("\\b", x, "\\b"), colnames(peakdata))
+  grep(paste0("^", x, "_"), colnames(peakdata))
 }))
+matching_indices <- sort(matching_indices)
+
 
 
 # Keep only columns 1:4 and the matched columns
@@ -303,8 +305,9 @@ if (length(samples_to_drop)>0){
 
 # Indices of columns from peakdata that match any Sample.Name from metadata
 matching_indices <- unlist(lapply(metadata$Sample.Name, function(x) {
-  grep(paste0("\\b", x, "\\b"), colnames(peakdata))
+  grep(paste0("^", x, "_"), colnames(peakdata))
 }))
+matching_indices <- sort(matching_indices)
 
 
 # Keep only columns 1:4 and the matched columns
