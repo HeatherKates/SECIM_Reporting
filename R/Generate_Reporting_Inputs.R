@@ -268,6 +268,9 @@ if(mzmine_version==2){
   peakdata <- filter(peakdata,!grepl("adduct",compound))
   #Remove any rows with "Complex" in the fourth column
   peakdata <- filter(peakdata,!grepl("Complex",compound))
+  #If there is a :[0-9]\+ after the compound name in row identity (main ID), remove it so KEGG ID can be added
+  peakdata$compound <- gsub(":\\s*\\d+\\.?\\d*", "", peakdata$compound)
+  
   }
 #################################################
 #################END#############################
