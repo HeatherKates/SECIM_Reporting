@@ -34,8 +34,8 @@ library(MetaboAnalystR)
 
 source("SECIM_Reporting/R/SECIM_Metabolomics.R")
 source("SECIM_Reporting/R/Norm_Plots.R")
-source("SECIM_Reporting/R/metid_SECIM-main/annotate_metabolites_mass_dataset.R")
-source("SECIM_Reporting/R/metid_SECIM-main/mzIdentify_mass_dataset.R")
+source("SECIM_Reporting/R/metid_SECIM-main/R/annotate_metabolites_mass_dataset.R")
+source("SECIM_Reporting/R/metid_SECIM-main/R/mzIdentify_mass_dataset.R")
 
 ##Mode Neg
 
@@ -123,6 +123,8 @@ if(mzmine_version==2){
   peakdata <- filter(peakdata,!grepl("adduct",compound))
   #Remove any rows with "Complex" in the fourth column
   peakdata <- filter(peakdata,!grepl("Complex",compound))
+  #If there is a :[0-9]\+ after the compound name in row identity (main ID), remove it so KEGG ID can be added
+  peakdata$compound <- gsub(":\\s*\\d+\\.?\\d*", "", peakdata$compound)
   }
 #################################################
 #################END#############################
@@ -152,8 +154,9 @@ if (length(samples_to_drop)>0){
 #assume there are four cols before samples
 # Indices of columns from peakdata that match any Sample.Name from metadata
 matching_indices <- unlist(lapply(metadata$Sample.Name, function(x) {
-  grep(x, colnames(peakdata))
+  grep(paste0("\\b", x, "\\b"), colnames(peakdata))
 }))
+
 
 # Keep only columns 1:4 and the matched columns
 peakdata <- peakdata[, c(1:4, matching_indices)]
@@ -270,8 +273,7 @@ if(mzmine_version==2){
   peakdata <- filter(peakdata,!grepl("Complex",compound))
   #If there is a :[0-9]\+ after the compound name in row identity (main ID), remove it so KEGG ID can be added
   peakdata$compound <- gsub(":\\s*\\d+\\.?\\d*", "", peakdata$compound)
-  
-  }
+    }
 #################################################
 #################END#############################
 #################################################
@@ -301,8 +303,9 @@ if (length(samples_to_drop)>0){
 
 # Indices of columns from peakdata that match any Sample.Name from metadata
 matching_indices <- unlist(lapply(metadata$Sample.Name, function(x) {
-  grep(x, colnames(peakdata))
+  grep(paste0("\\b", x, "\\b"), colnames(peakdata))
 }))
+
 
 # Keep only columns 1:4 and the matched columns
 peakdata <- peakdata[, c(1:4, matching_indices)]
