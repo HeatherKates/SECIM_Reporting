@@ -34,8 +34,8 @@ library(MetaboAnalystR)
 
 source("SECIM_Reporting/R/SECIM_Metabolomics.R")
 source("SECIM_Reporting/R/Norm_Plots.R")
-source("SECIM_Reporting/R/annotate_metabolites_mass_dataset.R")
-source("SECIM_Reporting/R/mzIdentify_mass_dataset.R")
+source("SECIM_Reporting/R/metid_SECIM-main/annotate_metabolites_mass_dataset.R")
+source("SECIM_Reporting/R/metid_SECIM-main/mzIdentify_mass_dataset.R")
 
 ##Mode Neg
 
