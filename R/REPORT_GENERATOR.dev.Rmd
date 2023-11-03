@@ -1,0 +1,1202 @@
+---
+title: "Reporting analysis of untargeted metabolomics data"
+author: "Southeast Center for Integrated Metabolomics"
+date: "`r format(Sys.time(), '%m/%d/%y')`"
+output: 
+  html_document:
+    toc: true
+    number_sections: 1
+    theme: cosmo
+    highlight: tango
+    code_folding: show
+  pdf_document: default
+  pandoc_args: [
+      "+RTS", "-K16000m",
+      "-RTS"
+    ]
+---
+
+```{css, echo=FALSE}
+/* Adjust the width to control the size of each plot */
+#up-plot-container, #down-plot-container {
+    width: 100%; /* Each plot takes up the full width of its container */
+    margin-bottom: 400px; /* Add space between the plots (adjust as needed) */
+    clear: both; /* Ensure each plot starts on a new line */
+    
+}
+```
+
+```{r, include=FALSE}
+#version update V3 from v2.1 is how the sections are hyperlinked
+knitr::opts_chunk$set(
+   echo = FALSE, warning = FALSE,message = FALSE
+)
+```
+
+```{r include=FALSE,message=FALSE,warning=FALSE}
+library(SummarizedExperiment)
+library(MetaboDiff)
+#library(cowplot)
+#library(ggVennDiagram)
+#library(VennDiagram)
+library(RColorBrewer)
+library(omu)
+library(ggplot2)
+library(ggrepel)
+library(pheatmap)
+library(KEGGREST)
+library(FELLA)
+library(org.Hs.eg.db)
+library(tibble)
+library(igraph)
+library(gridExtra)
+library(stringr)
+library(S4Vectors)
+library(SummarizedExperiment)
+library(downloadthis)
+#library(ggiraph)
+library(heatmaply)
+library(ddpcr) 
+library(DT)
+library(stringi)
+library(data.table)
+library(metid)
+library(xlsx)
+library(matrixStats)
+library(readxl)
+library(qmtools)
+library(stats)
+library(emmeans)
+library(broom)
+library(plyr)
+library(dplyr)
+library(plotly)
+library(htmltools)
+library(car)
+
+#source("Report_params.template.R") #Get variables
+Client_Data_Download <- ReportInput
+
+#Difference in v3.3 from 3.2 is adding an if statement to pick whether to show padj or p
+if(test_type %in% c("anova", "lmm","repeated_measures_anova")){
+p_type="adj.p.value"
+} 
+if (test_type =="t.test"){
+  if(nrow(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05)) > 10){
+    p_type="adj.p.value"} else {
+      p_type="p.value"}
+}
+if (test_type=="nostats"){
+  p_type="log2FC"
+}
+#Changes from previous version (run on Zhou-Sun): Change how sample type is dealt with
+#Read in variables here instead of subscripts
+```
+
+```{r,eval=TRUE}
+#If we need to remove dummy prefixes for contrast ordering
+#could be in a column name or a value in the column called contrast
+#"AATD_ZZ"                "COPD"                   "Zref_Control_MM" 
+#Removes the dummy prefix if it's in the colnames a df - if there is > metadata, might need to change
+for (i in 1:length(Client_Data_Download)) {
+  tryCatch({
+    colnames(Client_Data_Download[[i]]) <- gsub("Zref_", "", colnames(Client_Data_Download[[i]]))
+    
+    # Loop through the metadata rows and replace strings
+    for (j in 1:num_of_metadata) {
+      Client_Data_Download[[i]][,j ] <- gsub("Zref_", "", Client_Data_Download[[i]][,j ])
+    }
+  }, error = function(e) {
+  })
+}
+#Removes the dummy prefix if it's in the first row of a df - if there is > metadata, might need to change
+for (i in c(1:length(Client_Data_Download))){
+  tryCatch({
+Client_Data_Download[[i]][1,]<- gsub("[A-Za-z]ref_","",Client_Data_Download[[i]][1,])
+  }, error = function(e) {
+  })
+}
+
+for (i in c(1:length(Client_Data_Download))){
+  tryCatch({
+Client_Data_Download[[i]]$contrast <- gsub("Zref_","",Client_Data_Download[[i]]$contrast)
+    Client_Data_Download[[i]]$contrast <- gsub("[A-Za-z]ref_","",Client_Data_Download[[i]]$contrast)
+  }, error = function(e) {
+  })
+}
+
+Client_Data_Download[["metadata"]]$Class <- gsub("Zref_","",Client_Data_Download[["metadata"]]$Class)
+Client_Data_Download[["metadata"]]$Class <- gsub("[A-Za-z]ref_","",Client_Data_Download[[i]]$Class)
+class_order <- levels(as.factor(Client_Data_Download[["metadata"]]$Class))
+```
+
+# Project Summary
+
+PI: `r PI`
+
+Institution: `r Institution`
+
+Department: `r Department`
+
+Study Contact: `r StudyContact`
+
+Project: `r Project`
+
+Study Title: `r StudyTitle`
+
+Hypothesis/Goal:  `r Hypothesis`
+
+Study Summary: `r StudySummary`
+
+## Sample Information</span>
+
+The PI provided `r {nrow(Client_Data_Download$metadata)}` `r SampleType` samples.
+
+```{r}
+datatable(data.frame(table(Client_Data_Download$metadata$Class)), 
+          colnames = c(ind_var, "N"),
+          options = list(
+            dom = 't',   # Show only the table
+            paging = FALSE,   # Disable pagination
+            searching = FALSE,   # Disable search bar
+            ordering = FALSE# Disable column sorting
+          )
+)
+```
+
+## Download sample data, raw data, processed data, and statistical test results
+
+The results of statistical tests to identify changed metabolites are provided. In addition, we also include raw, feature-filtered, and normalized metabolomic intensity datasets. Please review the "Read Me" sheet included in the download for a detailed explanations of variables.
+
+```{r,eval=FALSE}
+#If we need to manually change annotation of a compound
+#columns_to_modify <- c("KEGG","CAS.ID", "HMDB.ID","Lab.ID", "Adduct", "mz.error", "mz.match.score", "RT.error", "RT.match.score", "CE", "SS", "Total.score", "Database")
+columns_to_modify <- c("KEGG","CAS.ID","Lab.ID", "Adduct", "mz.error", "mz.match.score", "Total.score", "Database")
+for (i in c(1,7:9)){
+
+Client_Data_Download[[i]] <- Client_Data_Download[[i]] %>% 
+mutate(Level = ifelse(compound == "CO2" & row.ID == "1536", "", Level))
+
+Client_Data_Download[[i]] <- Client_Data_Download[[i]] %>% 
+mutate_at(vars(columns_to_modify), ~ ifelse(compound == "CO2" & row.ID == "1536", NA, .))
+
+Client_Data_Download[[i]] <- Client_Data_Download[[i]] %>% 
+mutate(compound = ifelse(compound == "CO2" & row.ID == "1536", paste(mz,rt,sep="_"), compound))
+}
+```
+
+```{r,eval=TRUE}
+#If we need to manually remove a compound
+#columns_to_modify <- c("KEGG","CAS.ID", "HMDB.ID","Lab.ID", "Adduct", "mz.error", "mz.match.score", "RT.error", "RT.match.score", "CE", "SS", "Total.score", "Database")
+for (i in c(1:length(Client_Data_Download))){
+  tryCatch({
+    Client_Data_Download[[i]] <- Client_Data_Download[[i]] %>% 
+      dplyr::filter(!compound %in% drop_compounds)
+  }, error = function(e) {
+    # Handle the error (in this case, do nothing)
+  })
+}
+```
+
+```{r}
+for (i in c(1:length(Client_Data_Download))){
+  if("contrast.x" %in% colnames(Client_Data_Download[[i]])){
+Client_Data_Download[[i]] <- Client_Data_Download[[i]] %>% 
+dplyr::rename(contrast=contrast.x)
+  }
+}
+```
+
+```{r,eval=FALSE}
+#version update 2.1 this was removing metadata rows instead of moving to the top ...now just don't run it
+#Put the metadata rows at the top of counts matrices
+for (i in c(1:length(Client_Data_Download))){
+if("data.frame" %in% class(Client_Data_Download[[i]])){
+Client_Data_Download[[i]] <- Client_Data_Download[[i]][c(which(is.na(Client_Data_Download[[i]][, 1]))[-1], which(!is.na(Client_Data_Download[[i]][, 1]))), ]
+}
+}
+```
+
+```{r}
+contrasts <- levels(as.factor(Client_Data_Download[["report_results"]]$contrast))
+```
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+#Remove the last two because they're the plots
+Client_Data_Download_out <- Client_Data_Download
+if(test_type=="t.test"){
+Client_Data_Download_out[["README"]] <- read.csv("../InputFiles/ttest.README.csv")
+}
+if(test_type %in% c("anova", "lmm","repeated_measures_anova","lme")){
+Client_Data_Download_out[["README"]] <- read.csv("../InputFiles/ANOVA.emmeans.README.csv")
+}
+if(test_type == "nostats"){
+Client_Data_Download_out[["README"]] <- read.csv("../InputFiles/ttest.README.csv") #Change this
+}
+
+Client_Data_Download_out <- c(Client_Data_Download_out["README"],Client_Data_Download_out[1:length(Client_Data_Download_out)-1])
+Client_Data_Download_out[["report_results"]] <- Client_Data_Download_out[["report_results"]] %>% filter(contrast %in% contrasts)
+Client_Data_Download_out <- Client_Data_Download_out[!grepl("View",names(Client_Data_Download_out))] 
+Client_Data_Download_out %>% 
+  download_this(
+    output_name = "SECIM_Metabolomics",
+    output_extension = ".xlsx",
+    button_label = "Download metabolomics data and results",
+    button_type = "default",
+    has_icon = TRUE,
+    icon = "fa fa-save"
+  )
+#Client_Data_Download[["report_results"]] <- Client_Data_Download[["report_results"]] %>% dplyr::rename("p.value"="adj.p.value")
+```
+
+```{r}
+if(test_type %in% c("t.test","nostats")){for (i in c(1:4,7:9)){
+  tryCatch({
+Client_Data_Download[[i]] <- type.convert(Client_Data_Download[[i]], as.is = TRUE)
+})
+}}else{
+for (i in c(1:5,8:11)){
+  tryCatch({
+Client_Data_Download[[i]] <- type.convert(Client_Data_Download[[i]], as.is = TRUE)
+})
+}
+}
+```
+
+## Global metabolomics profiling</span>
+
+Global metabolomics profiling was performed on a Thermo Q-Exactive Orbitrap mass spectrometer with Dionex UHPLC and autosamples. All samples were normalized by total protein content prior to extraction. Samples were analyzed in positive and negative heated electrospray ionization with a mass resolution of 35,000 at m/z 200 as separate injections. Separation was achieved on an ACE 18-pfp 100 x 2.1 mm, 2 µm column with mobile phase A as 0.1% formic acid in water and mobile phase B as acetonitrile. This is a polar embedded stationary phase that provides comprehensive coverage, but does have some limitation is the coverage of very polar species. The flow rate was 350 µL/min with a column temperature of 25°C. 4 µL was injected for negative ions and 2 µL for positive ions.
+
+## Raw data generation</span>
+
+Metabolites were detected in both positive and negative ion modes as some metabolites are better ionized in one mode or the other. 
+
+MZmine (freeware) was used to identify features, deisotope, and align features. All adducts and complexes were identified and removed from the data set. The mass and retention time data was searched against our internal metabolite library, and known metabolites were mapped to KEGG IDs. 
+
+# Quality control and data transformation</span>
+
+`r if(filter_method=="ICC"){"Blank feature filtering was performed based on a intraclass correlation coefficient (ICC) (Schiffman, C. et al. 2019) as implemented in the R package qmtools (Joo J and Himes B 2022)."}`
+
+`r if(filter_method=="BFF"){"Blank feature filtering was performed by removing features for which samples' inner-quartile range was less than the blanks' lower limit of quantitation."}`
+
+`r if(filter_method=="IQR"){"Blank feature filtering was performed using inner-quartile range filtering as implemented in the R package MetaboAnalystR (https://github.com/xia-lab/MetaboAnalystR)"}`
+
+Missing data were imputed by k-nearest neighbor imputation as implemented in the R package MetaboAnalystR (https://github.com/xia-lab/MetaboAnalystR).
+
+`r if(norm_method=="vst"){"Peak intensities were normalized using the variance stabilizing transformation using the R package MetaboDiff (Mock et al. 2018)."}`
+
+`r if(norm_method=="median"){"Peak intensities were normalized using the median method of normalization as implemented the R package MSPrep (McGrath M et al. 2022)."}`
+
+`r if(norm_method=="quantile"){"Peak intensities were normalized using the quantile method of normalization as implemented the R package MSPrep (McGrath M et al. 2022)."}`
+
+`r if(norm_method=="Sum"){"Peak intensities were normalized sample-wise using sum normalization followed by log (base 10) transformation as implemented R package MetaboAnalystR (https://github.com/xia-lab/MetaboAnalystR). Please note that this method of normalization results in negative values and these are expected in your normalized dataset."}`
+
+\n Visualizations to assess the effect of normalization are provided below.
+
+##  Normalization Result (Positive ionization mode) </span>
+
+```{r,echo=FALSE,eval=TRUE,warning=FALSE,message=FALSE,fig.dim = c(4, 4)}
+grid.arrange(Client_Data_Download[["Pos.FeatureView"]][["grobs"]][[1]],Client_Data_Download[["Pos.FeatureView"]][["grobs"]][[2]],Client_Data_Download[["Pos.FeatureView"]][["grobs"]][[3]],Client_Data_Download[["Pos.FeatureView"]][["grobs"]][[4]],
+             top = textGrob("Feature View",gp=gpar(fontsize=20,font=3)))
+grid.arrange(Client_Data_Download[["Pos.SampleView"]][["grobs"]][[1]],Client_Data_Download[["Pos.SampleView"]][["grobs"]][[2]],Client_Data_Download[["Pos.SampleView"]][["grobs"]][[3]],Client_Data_Download[["Pos.SampleView"]][["grobs"]][[4]],
+              top = textGrob("Sample View",gp=gpar(fontsize=20,font=3)))
+```
+
+##  Normalization Result (Negative ionization mode) </span>
+
+```{r,echo=FALSE,eval=TRUE,warning=FALSE,message=FALSE,fig.dim = c(4, 4)}
+grid.arrange(Client_Data_Download[["Neg.FeatureView"]][["grobs"]][[1]],Client_Data_Download[["Neg.FeatureView"]][["grobs"]][[2]],Client_Data_Download[["Neg.FeatureView"]][["grobs"]][[3]],Client_Data_Download[["Neg.FeatureView"]][["grobs"]][[4]])
+grid.arrange(Client_Data_Download[["Neg.SampleView"]][["grobs"]][[1]],Client_Data_Download[["Neg.SampleView"]][["grobs"]][[2]],Client_Data_Download[["Neg.SampleView"]][["grobs"]][[3]],Client_Data_Download[["Neg.SampleView"]][["grobs"]][[4]])
+```
+
+# Statistical analysis</span>
+
+```{r}
+if(!test_type=="nostats"){
+html_text <- "Multivariate and univariate statistical analysis were performed to assess clustering of samples based on metabolomic profiles and to identify metabolites with changes in abundance between groups or biological conditions.<br><br>"
+}else{
+html_text <- "Multivariate statistical analysis and fold-change analysis were performed to assess clustering of samples based on metabolomic profiles and to identify metabolites with changes in abundance between groups or biological conditions.<br><br>"
+}
+htmltools::HTML(html_text)
+```
+
+Following analysis of all compounds detected in positive and negative ionization modes independently, the list of compounds were combined between negative and positive ionization modes and reduced to a single representative compound per likely metabolite based on p-value (lowest p-value compound retrained).
+
+## PCA (multivariate analaysis)</span>
+
+Principal component analysis of untargeted metabolomics data. Two-dimensional PCA score plots reveal possible separation in metabolite profiles related to variables of interest. Ellipses are calculated using the R package car (Fox J. and Weisberg S. 2019) and ~1 Std dev.
+
+```{r}
+PCA_DATA <- data.frame(cbind(colnames(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata-1),(num_of_metadata+1):(num_samples+2)])),
+                       t(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata-1),(num_of_metadata+1):(num_samples+2)]),
+                             t(rbind(
+  Client_Data_Download[["Pos.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Pos.normalized.data"]]),3:(num_samples+2)],
+  Client_Data_Download[["Neg.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Neg.normalized.data"]]),3:(num_samples+2)]))
+  )
+
+PCA_DATA[-1] <- lapply(PCA_DATA[-1], function(col) {
+  # Try to convert to numeric
+  numeric_col <- suppressWarnings(as.numeric(col))
+  
+  # If there are no NAs after the conversion or the original column was all NAs
+  if (!any(is.na(numeric_col)) || all(is.na(col))) {
+    return(numeric_col)
+  } else {
+    return(col)
+  }
+})
+
+
+# PCA
+pca_res <- prcomp(PCA_DATA[,-c(1:num_of_metadata)], center = TRUE, scale. = TRUE)
+scores <- pca_res$x
+
+
+colors <- RColorBrewer::brewer.pal(num_groups, "Set1")
+
+# Function to plot ellipse and points for each target
+plot_function <- function(target) {
+  target_data <- as.data.frame(scores[PCA_DATA[2] == target, 1:2])
+  target_color <- colors[which(unique(PCA_DATA[[2]]) == target)]
+  
+  # Ellipse
+  ellipse_coords <- car::dataEllipse(target_data$PC1, target_data$PC2, 
+                                     levels = 0.68, # roughly corresponds to 1 std dev
+                                     plot.points = FALSE, add = TRUE, draw = FALSE)
+  
+  fig <<- fig %>% 
+    add_polygons(x = ellipse_coords[,1], y = ellipse_coords[,2],
+                 line = list(color = target_color, dash = "dot"),
+                 fillcolor = target_color, opacity = 0.3,
+                 showlegend = F,
+                 hoverinfo = "skip")  # this tells plotly not to show any hover information for the ellipses
+  
+  text_data <- as.character(rownames(target_data))
+  PC1 <- as.numeric(target_data$PC1)
+  PC2 <- as.numeric(target_data$PC2)
+
+  # Scatter points
+  fig <<- fig %>% 
+    add_trace(data = target_data,
+              x = ~PC1, y = ~PC2, 
+              type = "scatter",
+              mode = "markers",
+              name = target,
+              marker = list(color = target_color),
+              text = ~text_data,
+              hoverinfo = "text")  # this tells plotly to display the text when hovering
+}
+
+fig <- plot_ly()
+lapply(unique(PCA_DATA[[2]]), plot_function)
+fig
+```
+
+## Univariate analysis </span>
+
+`r if(test_type=="anova"){"ANOVA was performed using the R package stats (R Core Team 2023) to determine whether there was a significant effect of variable Class on metabolite peak intensity, and post-hoc pairwise comparisons were performed using Estimated Marginal Means (aka Least-Squares Means) as implemented in the R package emmeans (R.V. Lenth 2023). Adjusted p-values are adjusted for multiple pairwise comparison testing, not testing of multiple metabolites."}`
+
+`r if(test_type=="repeated_measures_anova"){"A repeated-measures ANOVA was performed using the R package stats (R Core Team 2023) to determine whether there was a significant effect of variable Class on metabolite peak intensity. The anova formula was Metabolite~Class+Error(ID) and post-hoc pairwise comparisons were performed using Estimated Marginal Means (aka Least-Squares Means) as implemented in the R package emmeans (R.V. Lenth 2023). Adjusted p-values are adjusted for multiple pairwise comparison testing, not testing of multiple metabolites."}`
+
+`r if(test_type=="t.test"){"For each compound, a t-test was performed using the R package stats (R Core Team 2023) to test the null hypothesis that the mean intensity for group one = the mean intensity for group two. Adjusted p-values are corrected using the FDR method of p-value correction."}`
+
+`r if(test_type=="nostats"){"For each compound, no statistical analysis was performed. Instead, a fold-change analysis was performed"}`
+
+```{r,eval=FALSE,order_contrasts}
+contrasts <- contrasts[c(1,2,5,6)]
+```
+
+```{r,eval=TRUE,filter}
+#Make significant metabolite list (perform any filtering needed including significance in one contrasts but not in another, etc.)
+#For each contrast, there are significant peaks
+sig_peaks=list()
+sig_peaks_rowID=list()
+if(p_type=="adj.p.value"){
+for(i in 1:length(contrasts)){
+sig_peaks[[i]] <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(adj.p.value<0.05) %>% dplyr::select(compound) %>% unlist()
+sig_peaks_rowID[[i]] <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(adj.p.value<0.05) %>% dplyr::select(row.ID) %>% unlist()
+}
+names(sig_peaks) <- contrasts
+} 
+if (p_type=="p.value"){
+  for(i in 1:length(contrasts)){
+    sig_peaks[[i]] <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(p.value<0.05) %>%   dplyr::select(compound) %>% unlist()
+    sig_peaks_rowID[[i]] <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(p.value<0.05) %>%   dplyr::select(row.ID) %>% unlist()
+  }
+  names(sig_peaks) <- contrasts
+  names(sig_peaks_rowID) <- contrasts
+}
+if (p_type=="log2FC"){
+  for(i in 1:length(contrasts)){
+    sig_peaks[[i]] <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(abs(log2FC)>1.5) %>%   dplyr::select(compound) %>% unlist()
+    sig_peaks_rowID[[i]] <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(abs(log2FC)>1.5)  %>%   dplyr::select(row.ID) %>% unlist()
+    }
+  names(sig_peaks) <- contrasts
+  names(sig_peaks_rowID) <- contrasts
+}
+```
+
+```{r,eval=FALSE}
+#For each contrast, there can be a list of peaks to drop
+#PER REPORT custom code to filter out peaks from a given contrast
+#Report_Generator.v2: This has not been updated in a few versions, if it is needed check that it works 
+drop_peaks <- list()
+drop_rowID <- list()
+for(i in 1:length(contrasts)){
+drop_peaks[[i]] <- c("")}
+drop_peaks[[3]] <- Client_Data_Download[["report_results"]]  %>% filter(contrast==contrasts[[6]]) %>% filter(p.value<0.05) %>% dplyr::select(compound) %>% unlist() 
+drop_rowID[[3]] <- Client_Data_Download[["report_results"]]  %>% filter(contrast==contrasts[[6]]) %>% filter(p.value<0.05) %>% dplyr::select(rowID) %>% unlist() 
+
+#For each contrast, by removing the drop peaks we obtain a focal peaks list
+for(i in 1:length(contrasts)){
+sig_peaks[[i]] <- sig_peaks[[i]][!sig_peaks[[i]] %in% drop_peaks[[i]]]
+sig_peaks_rowID[[i]] <- sig_peaks_rowID[[i]][!sig_peaks_rowID[[i]] %in% drop_rowID[[i]]]
+
+}
+names(sig_peaks) <- contrasts
+names(sig_peaks_rowID) <- contrasts
+
+```
+
+```{r}
+#Make all of this into an R code block so a for loop can be used
+if(p_type %in% c("p.value","adj.p.value")){
+  for (i in 1:length(contrasts)){
+    print(paste(length(sig_peaks[[i]]), "metabolites were significantly changed (",p_type,"< 0.05) between",str_split(contrasts[[i]],"-")[[1]][[1]], "and",str_split(contrasts[[i]],"-")[[1]][[2]],sep=" "))
+    }
+}
+if(p_type=="log2FC"){
+  for (i in 1:length(contrasts)){
+    print(paste(length(sig_peaks[[i]]), "metabolites were changed (",p_type,"> 1.5) between",str_split(contrasts[[i]],"-")[[1]][[1]], "and",str_split(contrasts[[i]],"-")[[1]][[2]],sep=" "))
+    }  
+}
+```
+
+```{r}
+if(test_type == "nostats"){
+  html_text <- "## Table of changed metabolites </span><br>"
+} else {
+  html_text <-"## Table of significantly changed metabolites </span><br>"
+}
+htmltools::HTML(html_text)
+```
+
+`r if(test_type=="nostats"){"Table of metabolites filtered as described above (log2FC > 1.5)."}`
+
+`r if(p_type=="p.value"){"Table of significantly changed metabolites for overall effect of independent variable and for pairwise-contrasts filtered as described above (p-value < 0.05)."}`
+
+`r if(p_type=="adj.p.value"){"Table of significantly changed metabolites for overall effect of independent variable and for pairwise-contrasts filtered as described above (adjusted p-value < 0.05)."}`
+
+```{r}
+if (test_type == "nostats") {
+  html_text <- "To view results for a test of interest, click the arrow at the top of the contrast column to sort by contrast or use the search bar to search for a contrast. To see what metabolites were changed for more than one contrast, sort by metabolite and see how many contrasts were significant for each metabolite. (Tip: Reverse sorting by Metabolite will display known metabolites first.)<br>"
+} else {
+  html_text <- "To view results for a test of interest, click the arrow at the top of the contrast column to sort by contrast or use the search bar to search for a contrast. To see what metabolites were significantly changed for more than one test, sort by metabolite and see how many contrasts were significant for each metabolite. (Tip: Reverse sorting by Metabolite will display known metabolites first.)<br>"
+}
+htmltools::HTML(html_text)
+```
+
+Unknown compounds (those unidentified by our internal metabolite library) were assigned low-confidence metabolite names and KEGG IDs based on mass and the HMDB database as implemented in the R package metid (Shen X 2022). The annotation of these compounds is assigned a confidence value of "3" in downloadable tables and in the report. Compounds identified using our internal library are assigned a confidence value of "1". Compounds that could not be identified via either method are annotated using their m/z_RT values and the confidence level is blank.
+
+```{r,warn=FALSE}
+if(p_type=="p.value"){
+datatable(Client_Data_Download[["report_results"]] %>% filter(p.value<0.05) %>% dplyr::select(c(compound,p.value,Level,contrast,contains("FC"))) %>% dplyr::mutate(across(where(is.numeric), round, 5)),  caption = 'Table of significantly changed metabolites for (p-value < 0.05)')}
+if (p_type == "adj.p.value"){
+datatable(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05) %>% dplyr::select(c(compound,adj.p.value,Level,contrast,contains("FC"))) %>% dplyr::mutate(across(where(is.numeric), round, 5)),  caption = 'Table of significantly changed metabolites for (adjusted p-value < 0.05)')
+}
+if (p_type=="log2FC"){
+datatable(Client_Data_Download[["report_results"]] %>% filter(abs(log2FC)>1.5) %>% dplyr::select(c(compound,Level,contrast,contains("FC"))) %>% dplyr::mutate(across(where(is.numeric), round, 5)),  caption = 'Table of changed metabolites (log2FC > 1.5)')
+}
+```
+
+# Visualizations of Changed Metabolites
+
+All plots below can be zoomed, selected, and downloaded individually (and/or as modified) using the toolbar on the top right of the figure (will appear when you hover your mouse). Hover over plot points to view underlying data.
+
+## Barplots of changed metabolites by metabolite KEGG class
+
+```{r}
+if(test_type == "nostats"){
+  html_text <- "Metabolites with >1.5 log2FC change are shown by metabolite class. </span><br><br>"
+} else {
+  html_text <- paste0("Metabolites with significant changes (",p_type,"<0.05) are shown by metabolite class.</span><br><br>")
+}
+htmltools::HTML(html_text)
+```
+
+```{r}
+if(test_type == "nostats"){
+  html_text <- "Hover over bars to view changed metabolites for each class. (If a contrast is missing, there were no >1.5 log2FC changed metabolites with KEGG IDs for that contrast) </span><br>"
+} else {
+  html_text <- "Hover over bars to view significantly changed metabolites for each class. (If a contrast is missing, there were no significantly changed metabolites with KEGG IDs for that contrast) </span><br>"
+}
+htmltools::HTML(html_text)
+```
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE,fig.dim = c(8, 6),eval=TRUE}
+barplotlist = list()
+  for (i in 1:length(contrasts)){
+    
+##Make a min and max for a contrast's barplot fig
+#make an empty dataframe
+barplotminmax.vector <- list()
+for (classvar in levels(as.factor(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% dplyr::select(Class) %>% unlist()))){
+  #the class
+barplotminmax.vector <- c(barplotminmax.vector,
+#The number of increases
+nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC> 0)),
+  #The number of decreases
+  nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]]&log2FC< 0)))
+}
+##
+
+#Summarize by class
+#make an empty dataframe
+bar.df <- data.frame(matrix(ncol = 5, nrow = 0))
+for (classvar in levels(as.factor(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% dplyr::select(Class) %>% unlist()))){
+  if((nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC> 0))+
+  #The number of decreases
+nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC< 0)))>0){
+  #the class
+barplotvector <- c(classvar,
+#The number of increases
+  nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC> 0)),
+  #The number of decreases
+  nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC< 0)),
+  #The metabolites that increased
+gsub("([^,]+,[^,]+),", "\\1\n", toString(t(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% dplyr::filter(Class==classvar) %>% filter(compound %in% sig_peaks[[i]]) %>% filter(log2FC> 0)%>% dplyr::select(c(compound,Level))))),
+gsub("([^,]+,[^,]+),", "\\1\n", toString(t(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% dplyr::filter(Class==classvar) %>% filter(compound %in% sig_peaks[[i]]) %>% filter(log2FC < 0)%>% dplyr::select(c(compound,Level))))))
+bar.df<<-rbind(barplotvector,bar.df)
+}
+}
+#Make the colnames the first row
+colnames(bar.df) <- bar.df[1,]
+#Add colnames
+if(test_type=="nostats"){
+  colnames(bar.df) <- c("Class","Increases","Decreases","Increase_Text","Decrease_Text")
+  if(sum(as.numeric(bar.df$Increases)+as.numeric(bar.df$Decreases))>0){
+fig <- plot_ly()
+fig <- fig %>% add_bars(
+    x = bar.df$Class,
+    y = as.numeric(bar.df$Decreases),
+    hovertemplate = bar.df$Decrease_Text,
+    base = -as.numeric(bar.df$Decreases),
+    marker = list(
+      color = 'red'
+    ),
+    name = paste("Decreased in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to",
+                            str_split(contrasts[[i]],pattern="-")[[1]][2]))
+fig <- fig %>% add_bars(
+    x = bar.df$Class,
+    y = as.numeric(bar.df$Increases),
+    base = 0,
+    hovertemplate = bar.df$Increase_Text,
+    marker = list(
+      color = 'blue'
+    ),
+     name = paste("Increased in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to",
+                            str_split(contrasts[[i]],pattern="-")[[1]][2])
+  )
+
+fig <- fig %>% layout(title = paste(" >1.5 log2FC changes by metabolite class\n(",contrasts[[i]],")"),
+         xaxis = list(title = ""),
+         #It would be better to set the range to min,max across all contrasts,
+         #But that information is not available when each plot is drawn.
+         yaxis = list(title = "",tick0=0, dtick=1,range = list(-max(data.frame(barplotminmax.vector)),max(data.frame(barplotminmax.vector)))),margin = list(l = 75, t = 150))
+fig %>% layout(title="TEST")
+barplotlist[[i]] = ggplotly(fig) 
+} else{
+print("No metabolite classes with >1.5 log2FC changes")
+}
+  }else{
+colnames(bar.df) <- c("Class","Significant_Increases","Significant_Decreases","Increase_Text","Decrease_Text")
+if(sum(as.numeric(bar.df$Significant_Increases)+as.numeric(bar.df$Significant_Decreases))>0){
+fig <- plot_ly()
+fig <- fig %>% add_bars(
+    x = bar.df$Class,
+    y = as.numeric(bar.df$Significant_Decreases),
+    hovertemplate = bar.df$Decrease_Text,
+    base = -as.numeric(bar.df$Significant_Decreases),
+    marker = list(
+      color = 'red'
+    ),
+    name = paste("Decreased in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to",
+                            str_split(contrasts[[i]],pattern="-")[[1]][2]))
+fig <- fig %>% add_bars(
+    x = bar.df$Class,
+    y = as.numeric(bar.df$Significant_Increases),
+    base = 0,
+    hovertemplate = bar.df$Increase_Text,
+    marker = list(
+      color = 'blue'
+    ),
+     name = paste("Increased in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to",
+                            str_split(contrasts[[i]],pattern="-")[[1]][2])
+  )
+
+fig <- fig %>% layout(title = paste("Significant changes by metabolite class\n(",contrasts[[i]],")"),
+         xaxis = list(title = ""),
+         #It would be better to set the range to min,max across all contrasts,
+         #But that information is not available when each plot is drawn.
+         yaxis = list(title = "",tick0=0, dtick=1,range = list(-max(data.frame(barplotminmax.vector)),max(data.frame(barplotminmax.vector)))),margin = list(l = 75, t = 150))
+fig %>% layout(title="TEST")
+barplotlist[[i]] = ggplotly(fig) 
+} else
+{
+print("No metabolite classes with significant changes")
+}
+}
+  }
+htmltools::tagList(setNames(barplotlist, NULL))
+```
+
+## Volcano Plots
+
+```{r}
+if(test_type=="nostats"){
+html_text <- "For FC analysis only, no volcano plots are included<br>"
+htmltools::HTML(html_text)
+}
+```
+
+```{r}
+if(!test_type == "nostats"){
+
+html_text <- "Hover over plot points to view compound labels.<br>Metabolites that pass the significance cutoff (but not fold-change) are orange, metabolites that pass the fold-change cutoff (but not significance) are black, and metabolites that pass both the fold-change and significance cutoffs are red. Metabolites in gray do not pass the significance or fold-change cutoff. If a color is missing from the plot, that is because no metabolites fall in that category. Adjusted p-value cutoff is 0.05, Fold-Change cutoff is 1.5.<br>"
+
+htmltools::HTML(html_text)
+
+#,fig.height=20,fig.width=8
+volcanoplotlist = list()
+for (i in 1:length(contrasts)){
+##Volcano Plot
+volcano.res <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])
+
+#### Volcano plot of metabolites' fold-change highlights metabolites with different abundances between groups
+#Hover over points to view significantly metabolite names
+# add a grouping column; default value is "not significant"
+volcano.res$group <- "NotSignificant"
+
+# change the grouping for the entries with significance but not a large enough log2FC change
+volcano.res[which(volcano.res$compound %in% sig_peaks[[i]] & volcano.res$row.ID %in% sig_peaks_rowID[[i]] & abs(volcano.res['log2FC']) < 0.58 ),"group"] <- "Significant"
+
+# change the grouping for the entries a large enough log2FC change but not a low enough p value
+volcano.res[which(abs(volcano.res['log2FC']) > 0.58 ),"group"] <- "log2FC"
+
+# change the grouping for the entries with both significance and large enough log2FC change > 0.58
+volcano.res[which(volcano.res$compound %in% sig_peaks[[i]]  & abs(volcano.res['log2FC']) > 0.58 ),"group"] <- "Significant&log2FC"
+
+# make the Plot.ly plot
+p <- plot_ly(data = volcano.res, x = volcano.res$log2FC, y = -log10(volcano.res[[p_type]]),hoverinfo = "text", text = paste(volcano.res$compound,volcano.res$Level,sep=":"),
+             mode = "markers", color = volcano.res$group,colors = c(log2FC="black",NotSignificant="gray",Significant="orange",`Significant&log2FC`="red")) %>% 
+  layout(title=paste("P-value vs. Fold-Change in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
+                            str_split(contrasts[[i]],pattern="-")[[1]][2]),
+         xaxis = list(title = 'log2FC'), 
+         yaxis = list(title = '-log10PVal'),margin = list(l = 75, t = 150))
+
+    margin = list(l = 75, t = 150)
+
+volcanoplotlist[[i]]=p
+ }
+htmltools::tagList(setNames(volcanoplotlist, NULL))
+}
+```
+
+## Per-contrast boxplot of any of the top changed metabolites across sample class</span>\n
+
+```{r}
+if(test_type == "nostats"){
+  html_text <- "Per-contrast boxplot of any of the top changed metabolites across sample class</span><br><br>"
+} else {
+  html_text <- "Per-contrast boxplot of any of the top significantly changed metabolites across sample class</span><br><br>"
+}
+htmltools::HTML(html_text)
+```
+
+For each contrast, the top changed metabolites are available to view as a boxplot of normalized peak intensity across sample class.
+
+For some contrasts, dummy variables with no data (named beginning with X) have been added to the dropdown menu for ease of plotting. Please ignore.
+
+Keep in mind boxplots display the median value of the data range, not the means (the comparison of which is used to calculate the test statistic and determine significance).
+
+```{r,boxplot,echo=FALSE,warning=FALSE,message=FALSE,fig.dim = c(8, 4),eval=TRUE}
+boxplotlist = list()
+for (i in c(1:length(contrasts))){
+
+#Manual changes needed for where metabolite data begins and for groupvar
+## Order results by p.value values
+if(p_type=="adj.p.value"){
+  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(adj.p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
+  Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(adj.p.value) %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
+}
+if(p_type=="p.value"){
+  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
+  Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(p.value) %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
+}
+if(p_type=="log2FC"){
+  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(desc(log2FC)) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
+  Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(desc(log2FC)) %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
+}
+
+#Combine - CHANGE where n:nrow begins depends on...number of metadata? 
+#version update 2.1, previously the intensity data had header rows for metadata and so the matrices would first be subset by [num_of_metadata:nrow(matrix),], but it seems since using metaboanalayst I stopped doing this so now no rows are removed. Check back if it gets added again
+normalized_int <- rbind(
+  Client_Data_Download[["Pos.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Pos.normalized.data"]]),3:(num_samples+2)],
+  Client_Data_Download[["Neg.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Neg.normalized.data"]]),3:(num_samples+2)])
+
+rownames(normalized_int) <- c(paste(Client_Data_Download[["Pos.normalized.data"]]$row.ID,Client_Data_Download[["Pos.normalized.data"]]$mode,Client_Data_Download[["Pos.normalized.data"]]$compound,sep="_")[-c(1:(num_of_metadata-1))],paste(Client_Data_Download[["Neg.normalized.data"]]$row.ID,Client_Data_Download[["Neg.normalized.data"]]$mode,Client_Data_Download[["Neg.normalized.data"]]$compound,sep="_")[-c(1:(num_of_metadata-1))])
+
+normalized_int <- filter(normalized_int, rownames(normalized_int) %in% top20_sigOE_genes)
+
+#The boxplot data frame is samples in rows metabs in cols, the normalized intensities for each sample preceded by the name and any metadata for that sample
+my.df <- t(normalized_int)
+
+#Add empty data columns to df if < 20 metabolites were significantly changed for a contrast
+if(ncol(my.df)<20){
+  add <- 20-ncol(my.df)
+  add.df <- data.frame(matrix(ncol = add, nrow = nrow(my.df)))
+  my.df <- cbind(my.df,add.df)
+}
+
+#add sample names and metadata to peak data
+#rownames(my.df) <- gsub(".x","",rownames(my.df)) #I don't remember why these were there
+my.df <- merge(Client_Data_Download[["metadata"]], my.df,by=0) %>% mutate_if(is.numeric, round,digits=4)
+#####################################
+#OPTIONAL To control the order of the x-axis . manual change arrange factor
+if(length(class_order)>1){
+xform <- list(categoryorder = "array",categoryarray = class_order)
+}
+
+num=ncol(my.df)-20+1
+#Create the update drop-down menus
+updatemenus <- list(
+  #x=-.2,y = 0.9,
+  list(direction = "down",
+                x = -.3,
+                y=0.9,
+buttons = list(
+list(method = "update",
+    args = list(list(visible=c(TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE)),
+                           list(yaxis = list(title = "Peak intensity"))),
+label = colnames(my.df[num])),
+list(method = "update",
+     args = list(list(visible=c(FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE)),
+                           list(yaxis = list(title = "Peak intensity"))),
+               label = colnames(my.df[num+1])),
+list(method = "update",
+     args = list(list(visible=c(FALSE, FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE)),
+                 list(yaxis = list(title = "Peak intensity"))),
+     label = colnames(my.df[num+2])),
+list(method = "update",
+     args = list(list(visible=c(FALSE,FALSE,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE)),
+                 list(yaxis = list(title = "Peak intensity"))),
+     label = colnames(my.df[num+3])),
+list(method = "update",
+     args = list(list(visible=c(FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE)),
+                 list(yaxis = list(title = "Peak intensity"))),
+     label = colnames(my.df[num+4])),
+list(method = "update",
+     args = list(list(visible=c(FALSE, FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE)),
+                 list(yaxis = list(title = "Peak intensity"))),
+     label = colnames(my.df[num+5])),
+list(method = "update",
+     args = list(list(visible=c(FALSE, FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE)),
+                 list(yaxis = list(title = "Peak intensity"))),
+     label = colnames(my.df[num+6])),
+list(method = "update",
+     args = list(list(visible=c(FALSE, FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE)),
+                 list(yaxis = list(title = "Peak intensity"))),
+     label = colnames(my.df[num+7])),
+list(method = "update",
+     args = list(list(visible=c(FALSE, FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE)),
+                 list(yaxis = list(title = "Peak intensity"))),
+     label = colnames(my.df[num+8])),
+list(method = "update",
+     args = list(list(visible=c(FALSE, FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE)),
+                 list(yaxis = list(title = "Peak intensity"))),
+     label = colnames(my.df[num+9])),
+list(method = "update",
+     args = list(list(visible=c(FALSE, FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE)),
+                 list(yaxis = list(title = "Peak intensity"))),
+     label = colnames(my.df[num+10])),
+list(method = "update",
+     args = list(list(visible=c(FALSE, FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE)),
+                 list(yaxis = list(title = "Peak intensity"))),
+     label = colnames(my.df[num+11])),
+list(method = "update",
+     args = list(list(visible=c(FALSE, FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE)),
+                 list(yaxis = list(title = "Peak intensity"))),
+     label = colnames(my.df[num+12])),
+list(method = "update",
+     args = list(list(visible=c(FALSE, FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE)),
+                 list(yaxis = list(title = "Peak intensity"))),
+     label = colnames(my.df[num+13])),
+list(method = "update",
+     args = list(list(visible=c(FALSE, FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE,FALSE)),
+                 list(yaxis = list(title = "Peak intensity"))),
+     label = colnames(my.df[num+14])),
+list(method = "update",
+     args = list(list(visible=c(FALSE, FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,FALSE,FALSE,FALSE)),
+                 list(yaxis = list(title = "Peak intensity"))),
+     label = colnames(my.df[num+15])),
+list(method = "update",
+     args = list(list(visible=c(FALSE, FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,FALSE,FALSE)),
+                 list(yaxis = list(title = "Peak intensity"))),
+     label = colnames(my.df[num+16])),
+list(method = "update",
+     args = list(list(visible=c(FALSE, FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE,FALSE)),
+                 list(yaxis = list(title = "Peak intensity"))),
+     label = colnames(my.df[num+17])),
+list(method = "update",
+     args = list(list(visible=c(FALSE, FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE,FALSE)),
+                 list(yaxis = list(title = "Peak intensity"))),
+     label = colnames(my.df[num+18])),
+list(method = "update",
+     args = list(list(visible=c(FALSE, FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,TRUE)),
+                 list(yaxis = list(title = "Peak intensity"))),
+     label = colnames(my.df[num+19]))
+    )))
+m <- list(l = 220,r = 50,b = 50,t = 50)
+plot <- plot_ly(data=my.df, x = boxplot_var,color = I("gray"),yaxis = list(title = "Peak intensity"))
+
+if(length(class_order)>1){
+ plot <- plot %>%layout(xaxis=xform)
+ }
+
+plot <- plot %>%
+
+add_boxplot(x=boxplot_var,y = my.df[,num],visible=TRUE)%>%
+add_boxplot(x=boxplot_var,y = my.df[,num+1], visible =FALSE)%>%
+add_boxplot(x=boxplot_var,y = my.df[,num+2], visible = FALSE) %>%
+  add_boxplot(x=boxplot_var,y = my.df[,num+3], visible = FALSE) %>%
+  add_boxplot(x=boxplot_var,y = my.df[,num+4], visible = FALSE) %>%
+  add_boxplot(x=boxplot_var,y = my.df[,num+5], visible = FALSE) %>%
+  add_boxplot(x=boxplot_var,y = my.df[,num+6], visible = FALSE) %>%
+  add_boxplot(x=boxplot_var,y = my.df[,num+7], visible = FALSE) %>%
+  add_boxplot(x=boxplot_var,y = my.df[,num+8], visible = FALSE) %>%
+  add_boxplot(x=boxplot_var,y = my.df[,num+9], visible = FALSE) %>%
+  add_boxplot(x=boxplot_var,y = my.df[,num+10], visible = FALSE) %>%
+  add_boxplot(x=boxplot_var,y = my.df[,num+11], visible = FALSE) %>%
+  add_boxplot(x=boxplot_var,y = my.df[,num+12], visible = FALSE) %>%
+  add_boxplot(x=boxplot_var,y = my.df[,num+13], visible = FALSE) %>%
+  add_boxplot(x=boxplot_var,y = my.df[,num+14], visible = FALSE) %>%
+  add_boxplot(x=boxplot_var,y = my.df[,num+15], visible = FALSE) %>%
+  add_boxplot(x=boxplot_var,y = my.df[,num+16], visible = FALSE) %>%
+  add_boxplot(x=boxplot_var,y = my.df[,num+17], visible = FALSE) %>%
+  add_boxplot(x=boxplot_var,y = my.df[,num+18], visible = FALSE) %>%
+  add_boxplot(x=boxplot_var,y = my.df[,num+19], visible = FALSE) %>%
+
+#Add the buttons to update
+layout(updatemenus =updatemenus,
+  title = paste("Boxplot of peak intensities across ",Grouping_Variable),
+    showlegend = FALSE,color="gray",yaxis = list(title = "Peak intensity")) %>%
+
+#Add plot annotations
+add_annotations(x = 'center',y = 1.05, text = paste("Top metabolites ",contrasts[[i]],sep=""),
+xref = "paper",yref = "paper",
+showarrow = FALSE) %>% layout(autosize = F, width = 800, height = 400, margin = m)
+
+boxplotlist[[i]]=plot #this works if you just print(plot), the plots are right
+}
+htmltools::tagList(boxplotlist)
+```
+
+## Heatmaps of changed metabolites
+
+```{r}
+if(test_type == "nostats"){
+  html_text <- "Heatmaps of metabolites with greatest log2FC difference in abundance</span><br><br>"
+} else {
+  html_text <- "Heatmaps of metabolites with most significant difference in abundance</span><br><br>"
+}
+htmltools::HTML(html_text)
+```
+
+For each contrast, the top changed metabolites are available to view as a heatmap of normalized peak intensity. Samples (columns) are clustered by the peak intensities for the displayed set of compounds.
+
+Hover and select a subset of metabolites or samples of interest to export a zoomed-in subfigure
+
+```{r,heatmap,echo=FALSE,warning=FALSE,message=FALSE,fig.dim = c(10, 12)}
+heatmaplist=list()
+for (i in 1:length(contrasts)){
+  
+#Manual changes needed for where metabolite data begins and for groupvar
+## Order results by p.value values
+if(p_type=="adj.p.value"){
+  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast == contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(adj.p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
+  Client_Data_Download[["report_results"]] %>% filter(contrast == contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(adj.p.value) %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
+}
+if(p_type=="p.value"){
+  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast == contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
+  Client_Data_Download[["report_results"]] %>% filter(contrast == contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(p.value) %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
+}
+if(p_type=="log2FC"){
+  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast == contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(desc(log2FC)) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
+  Client_Data_Download[["report_results"]] %>% filter(contrast == contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(desc(log2FC)) %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
+}
+#detected in positive 
+
+#Combine
+#Combine
+#Combine - CHANGE where n:nrow begins depends on...number of metadata? not usre
+normalized_int <- rbind(
+  Client_Data_Download[["Pos.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Pos.normalized.data"]]),3:(num_samples+2)],
+  Client_Data_Download[["Neg.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Neg.normalized.data"]]),3:(num_samples+2)])
+
+rownames(normalized_int) <- c(paste(Client_Data_Download[["Pos.normalized.data"]]$row.ID,Client_Data_Download[["Pos.normalized.data"]]$mode,Client_Data_Download[["Pos.normalized.data"]]$compound,sep="_")[-c(1:(num_of_metadata-1))],paste(Client_Data_Download[["Neg.normalized.data"]]$row.ID,Client_Data_Download[["Neg.normalized.data"]]$mode,Client_Data_Download[["Neg.normalized.data"]]$compound,sep="_")[-c(1:(num_of_metadata-1))])
+
+normalized_int <- filter(normalized_int, rownames(normalized_int) %in% top20_sigOE_genes)
+
+normalized_int <- mutate_all(normalized_int, function(x) as.numeric(as.character(x)))
+
+sidecols <- data.frame(Client_Data_Download[["metadata"]] %>% select(colnames(Client_Data_Download[["metadata"]][2:ncol(Client_Data_Download[["metadata"]])]))) #Maybe sometimes this should have >1 metadata
+temp.normalized.int <- t(normalized_int)
+temp.normalized.int <- merge(temp.normalized.int,sidecols,by=0)
+sidecols <- temp.normalized.int[,c(1,(ncol(temp.normalized.int)-(num_of_metadata-2)):ncol(temp.normalized.int))]
+#arrange the sidecols by the colnames in 
+rownames(sidecols) <- sidecols$Row.names
+sidecols <- data.frame(sidecols[,-1])
+colnames(sidecols) <- colnames(Client_Data_Download[["metadata"]][2:ncol(Client_Data_Download[["metadata"]])])
+normalized_int <- data.frame(t(temp.normalized.int))
+colnames(normalized_int) <- normalized_int[1,]
+normalized_int <- normalized_int[-1,]
+normalized_int <- normalized_int %>% filter(!row.names(normalized_int) %in% colnames(Client_Data_Download[["metadata"]]))
+normalized_int <- mutate_all(normalized_int, function(x) as.numeric(as.character(x)))
+
+if(nrow(normalized_int)>1){
+  if(test_type=="nostats"){
+    hm <-   heatmaply(plot_method = "plotly",normalized_int,show_dendrogram = FALSE,showticklabels=c(FALSE, TRUE),scale="row",
+          colors=c("darkblue","white","darkred"),
+          #Make this the annotation bar
+          col_side_colors = sidecols,xlab = "Samples",
+  ylab = "Metabolites", 
+  main = paste("Peak heights (scaled) for most changed metabolites\n",contrasts[[i]],sep=""),margins=c(0,0,60,0),fontsize_row = 5,cex.main=1,labRow=gsub("\\d+_\\w+_","",(rownames(normalized_int))),side_color_colorbar_len = .5)
+
+heatmaplist[[i]]=hm
+    
+  }else{
+hm <-   heatmaply(plot_method = "plotly",normalized_int,show_dendrogram = FALSE,showticklabels=c(FALSE, TRUE),scale="row",
+          colors=c("darkblue","white","darkred"),
+          #Make this the annotation bar
+          col_side_colors = sidecols,xlab = "Samples",
+  ylab = "Metabolites", 
+  main = paste("Peak heights (scaled) for most significantly changed metabolites\n",contrasts[[i]],sep=""),margins=c(0,0,60,0),fontsize_row = 5,cex.main=1,labRow=gsub("\\d+_\\w+_","",(rownames(normalized_int))),side_color_colorbar_len = .5)
+
+heatmaplist[[i]]=hm
+}
+}
+}
+htmltools::tagList(setNames(heatmaplist, NULL))
+```
+
+## KEGG over representation and sub network analysis
+
+KEGG analysis was performed with the R package FELLA (https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2487-5). Starting from a list of metabolites of interest, FELLA applies a null diffusive process over a network-based representation of the KEGG database and derive a relevant sub-network. The result of this analysis is a list of affected pathways and a graphical sub-pathway representation. The input list of metabolites of interest is indicated by the plot title. 
+
+```{r}
+if(test_type == "nostats"){
+  html_text <- "The most changed (log2FC) compounds input into the KEGG subnetwork analysis are shown with red squares (see key) and are drawn in their KEGG subnetwork.<br> Hover over nodes to view annotation and to see the confidence of our identification of a particular input KEGG compound.<br>(If no subnetworks are visible below, there were no >1.5 log2FC changed metabolites with KEGG IDs.)<br><br>"
+} else {
+  html_text <- "The significantly changed compounds input into the KEGG subnetwork analysis are shown with red squares (see key) and are drawn in their KEGG subnetwork.<br> Hover over nodes to view annotation and to see the confidence of our identification of a particular input KEGG compound.<br> (If no subnetworks are visible below, there were no significantly changed metabolites with KEGG IDs.)<br><br>"
+}
+htmltools::HTML(html_text)
+```
+
+Select areas of within this subnetwork to view and export clusters of interest. 
+
+```{r,warning=FALSE,message=FALSE,include=FALSE,eval=TRUE}
+# Building the database ("graph") from KEGG - pathways can be filtered here
+#This is from Step0_BuildJEGGDB.R but is not data-dependent
+load("../InputFiles/KEGG_network.RDATA")
+```
+
+```{r,network,eval=TRUE,warning=FALSE,message=FALSE,fig.dim=c(30,20)}
+vars_created <- c("axis.up", "edge_shape", "edge_shapes", "edge_shapes.up", "es.up", "final_vars", 
+                  "KEGG_map", "L.up", "message_text", "Ne.up", "network.up", "node.data.up", 
+                  "Nv.up", "sig.up.KEGGs.up", "up.graph", "up.plot.up", "v0", "v1", "vars_created", 
+                  "vs.names.KEGG.confidence.2.up", "vs.names.KEGG.confidence.up", "vs.names.KEGG.up", 
+                  "vs.names.up", "vs.up", "Xn.up", "Yn.up", "analysis.up", "upnetworklist","upnetwork",
+                  "axis.down", "edge_shapes.down", "es.down", "L.down", "Ne.down", "network.down", "node.data.down", 
+                  "Nv.down", "sig.down.KEGGs.down", "down.graph", "down.plot.down", 
+                  "vs.names.KEGG.confidence.2.down", "vs.names.KEGG.confidence.down", "vs.names.KEGG.down", 
+                  "vs.names.down", "vs.down", "Xn.down", "Yn.down", "analysis.down", "downnetworklist","downnetwork")
+# Create a list of named lists
+network_data <- setNames(vector("list", length(vars_created)), vars_created)
+
+# Fill each named list with NULLs based on the length of 'var'
+network_data <- lapply(network_data, function(x) {
+    x <- vector("list", length(contrasts))
+    for (i in seq_along(x)) {
+        x[[i]] <- NULL
+    }
+    return(x)
+})
+
+elements_list <- setNames(replicate(length(contrasts), NULL, simplify = FALSE),
+                          paste0("element", 1:length(contrasts)))
+
+network_data <- setNames(
+  lapply(vars_created, function(x) elements_list),
+  vars_created
+)
+
+source("Generate_network.R")
+
+for (i in 1:length(contrasts)){
+  #UP network
+  
+  #Make a list of significant KEGG compounds
+  network_data[["sig.up.KEGGs.up"]][[i]] <- Client_Data_Download[["report_results"]] %>% 
+    filter(contrast==contrasts[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>%
+           filter(log2FC > 0) %>% 
+           dplyr::select(KEGG) %>% filter(!KEGG=="")
+  
+  #If statement #1: Only run the enrich function if there are significant KEGGs to input (otherwise there'd be an error)
+  
+  if (nrow(network_data[["sig.up.KEGGs.up"]][[i]]) > 0) {
+    tryCatch({
+      network_data[["analysis.up"]][[i]] <-  enrich(
+        compounds = network_data[["sig.up.KEGGs.up"]][[i]]$KEGG,
+        data = fella.data,
+        method = "diffusion",
+        approx = "normality"
+      )
+    }, error = function(cond) {
+      message("Error")
+      message("Here's the original error message:")
+      message(cond)
+      # Choose a return value in case of error
+      return(NA)
+      })
+    }
+
+  #If statement #2: necessary because even if there are significant KEGGs, there could still be no FELLA object
+  
+  if (!is.null(network_data[["analysis.up"]][[i]])) {
+    #extract the sub-network 
+    network_data[["up.graph"]][[i]] <- generateResultsGraph(
+    object = network_data[["analysis.up"]][[i]],
+    data = fella.data,
+    method = "diffusion",
+    thresholdConnectedComponent = 0.05,
+    threshold= 0.05,
+    nlimit=400)
+  }
+  
+  # If statement #3: main code block if statement is necessary because even if there is a FELLA object, there could still be no graph
+  if (!is.null(network_data[["up.graph"]][[i]])) {
+    network_data[["upnetwork"]][[i]] <- generate_network(i, network_data,"up","more")
+    
+    # Force the evaluation 
+    print(network_data[["upnetwork"]][[i]])
+    }
+
+  #End the big code block that is only run if there is a graph                                                   
+  
+  #If statement #4: Once all is said and done, the plot needs to be added as an element to the networklist object 
+
+  if (!is.null(network_data[["upnetwork"]][[i]])) {
+    network_data[["upnetworklist"]][[i]] <- network_data[["upnetwork"]][[i]]
+  } else {
+    message_text <- if(test_type == "nostats") {
+      paste("No KEGG subnetwork found for metabolites more abundant in",
+            str_split(contrasts[[i]], pattern="-")[[1]][1], "relative to",
+            str_split(contrasts[[i]], pattern="-")[[1]][2])
+    } else {
+      paste("No KEGG subnetwork found for metabolites significantly more abundant in",
+            str_split(contrasts[[i]], pattern="-")[[1]][1], "relative to",
+            str_split(contrasts[[i]], pattern="-")[[1]][2])
+    }
+    
+    cat(message_text, "\n")
+    network_data[["upnetworklist"]][[i]]  <- message_text
+  }
+
+#DOWN network
+  
+  #Make a list of significant KEGG compounds
+  network_data[["sig.down.KEGGs.down"]][[i]] <- Client_Data_Download[["report_results"]] %>% 
+    filter(contrast==contrasts[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>%
+           filter(log2FC < 0) %>% 
+           dplyr::select(KEGG) %>% filter(!KEGG=="")
+  
+  #If statement #1: Only run the enrich function if there are significant KEGGs to input (otherwise there'd be an error)
+  
+  if (nrow(network_data[["sig.down.KEGGs.down"]][[i]]) > 0) {
+    tryCatch({
+      network_data[["analysis.down"]][[i]] <-  enrich(
+        compounds = network_data[["sig.down.KEGGs.down"]][[i]]$KEGG,
+        data = fella.data,
+        method = "diffusion",
+        approx = "normality"
+      )
+    }, error = function(cond) {
+      message("Error")
+      message("Here's the original error message:")
+      message(cond)
+      # Choose a return value in case of error
+      return(NA)
+      })
+    }
+
+  #If statement #2: necessary because even if there are significant KEGGs, there could still be no FELLA object
+  
+  if (!is.null(network_data[["analysis.down"]][[i]])) {
+    #extract the sub-network 
+    network_data[["down.graph"]][[i]] <- generateResultsGraph(
+    object = network_data[["analysis.down"]][[i]],
+    data = fella.data,
+    method = "diffusion",
+    thresholdConnectedComponent = 0.05,
+    threshold= 0.05,
+    nlimit=400)
+    }
+  
+  # If statement #3: main code block if statement is necessary because even if there is a FELLA object, there could still be no graph
+  if (!is.null(network_data[["down.graph"]][[i]])) {
+    network_data[["downnetwork"]][[i]] <- generate_network(i, network_data,"down","less")
+    
+    # Force the evaluation 
+    print(network_data[["downnetwork"]][[i]])
+    }
+  #End the big code block that is only run if there is a graph                                                   
+  
+  #If statement #4: Once all is said and done, the plot needs to be added as an element to the networklist object 
+
+  if (!is.null(network_data[["downnetwork"]][[i]])) {
+    network_data[["downnetworklist"]][[i]] <- network_data[["downnetwork"]][[i]]
+  } else {
+    message_text <- if(test_type == "nostats") {
+      paste("No KEGG subnetwork found for metabolites less abundant in",
+            str_split(contrasts[[i]], pattern="-")[[1]][1], "relative to",
+            str_split(contrasts[[i]], pattern="-")[[1]][2])
+    } else {
+      paste("No KEGG subnetwork found for metabolites significantly less abundant in",
+            str_split(contrasts[[i]], pattern="-")[[1]][1], "relative to",
+            str_split(contrasts[[i]], pattern="-")[[1]][2])
+    }
+    
+    cat(message_text, "\n")
+    network_data[["downnetworklist"]][[i]]  <- message_text
+  }
+
+}
+interleaved_plots <- mapply(
+  function(up_plot, down_plot) {
+    list(up_plot, down_plot)
+  },
+  network_data[["upnetworklist"]],
+  network_data[["downnetworklist"]],
+  SIMPLIFY = FALSE
+)
+
+# Flatten the list
+interleaved_plots <- unlist(interleaved_plots, recursive = FALSE)
+
+# Add plots to plots
+plots <- lapply(interleaved_plots, function(p) {
+    htmltools::tags$div(p, style="height: 800px; margin-bottom: 40px;")
+})
+#Plot
+htmltools::tagList(plots)
+```
