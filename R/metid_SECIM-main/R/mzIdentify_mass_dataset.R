@@ -58,7 +58,8 @@ mzIdentify_mass_dataset2 <-
     }
     
     if (polarity == "positive" & column == "rp_custom") {
-      data("rp.pos", envir = environment())
+      #data("rp.pos", envir = environment())
+      load("/blue/timgarrett/hkates/SECIM_Reporting/R/metid_SECIM-main/data/rp.pos.custom.rda")
       adduct.table <- rp.pos.custom
     }
     
@@ -73,7 +74,8 @@ mzIdentify_mass_dataset2 <-
     }
     
     if (polarity == "negative" & column == "rp_custom") {
-      data("rp.neg", envir = environment())
+      #data("rp.neg.custom", envir = environment())
+      load("/blue/timgarrett/hkates/SECIM_Reporting/R/metid_SECIM-main/data/rp.neg.custom.rda")
       adduct.table <- rp.neg.custom
     }
     
@@ -426,7 +428,7 @@ mzIdentify_mass_dataset <-
     }
     
      if (polarity == "positive" & column == "rp_custom") {
-      data("rp.pos", envir = environment())
+      data("rp.pos.custom", envir = environment())
       adduct.table <- rp.pos.custom
     }
     
