@@ -296,8 +296,8 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
                                       rt.match.tol = 10001, 
                                       polarity = "positive",
                                       database = get(metid_DB),
-                                      #column = "rp_custom",
-                                      column = "rp",
+                                      column = "rp_custom",
+                                      #column = "rp",
                                       threads=4,
                                       candidate.num=1)
   } else if(mode=="Neg"){
