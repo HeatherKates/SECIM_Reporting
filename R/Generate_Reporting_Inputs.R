@@ -99,6 +99,9 @@ if("internal_ID" %in% colnames(peakdata)){
 ######Steps to process column names #############
 #################################################
 
+#Remove the three identifiers created by SECIM
+colnames(peakdata) <- gsub("^Q[^_]+_[^_]+_[^_]+_(.*)", "\\1", colnames(peakdata))
+
 #If there are duplicate colnames, make them unique and print a warning
 # Check for duplicate column names
 
@@ -248,6 +251,9 @@ if("internal_ID" %in% colnames(peakdata)){
 #################################################
 ######Steps to process column names #############
 #################################################
+
+#Remove the three identifiers created by SECIM
+colnames(peakdata) <- gsub("^Q[^_]+_[^_]+_[^_]+_(.*)", "\\1", colnames(peakdata))
 
 #If there are duplicate colnames, make them unique and print a warning
 # Check for duplicate column names
