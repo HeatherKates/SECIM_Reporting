@@ -31,7 +31,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   write.csv(file=paste(client,mode,"metab.in.csv"),dataset,row.names = FALSE)
   mSet<-InitDataObjects("pktable", "stat", FALSE)
   mSet<-Read.TextData(mSet, paste(client,mode,"metab.in.csv"), "colu", "disc")
-  mSet<-SanityCheckData(mSet)
+  mSet<-SanityCheckDataHRK(mSet)
   #Get the metadataset from mSet so the order matches throughout
   md <- data.frame(mSet[["dataSet"]][["meta.info"]])
   rownames(md) <- mSet[["dataSet"]][["url.smp.nms"]]
@@ -44,7 +44,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   mSet<-SetDesignType(mSet, "multi")
   mSet<-Read.TextDataTs(mSet, paste(client,mode,"metab.in.csv"), "colmf")
   mSet<-ReadMetaData(mSet,paste(client,mode,"metab.meta.in.csv"))
-  mSet<-SanityCheckData(mSet)
+  mSet<-SanityCheckDataHRK(mSet)
   #Get the metadataset from mSet so the order matches throughout
   md <- data.frame(mSet[["dataSet"]][["meta.info"]])
   rownames(md) <- mSet[["dataSet"]][["url.smp.nms"]]
@@ -54,7 +54,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   
   mSet<-RemoveMissingPercent(mSet, percent=0.5)
   mSet<-ImputeMissingVar(mSet, method="knn_var")
-  SanityCheckData(mSet)
+  SanityCheckDataHRK(mSet)
   #Blank-feature filtering
   mSet<-FilterVariable(mSet, filter="iqr", "F", 10)
   #Normalization

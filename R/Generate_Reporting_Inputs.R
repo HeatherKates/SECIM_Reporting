@@ -36,6 +36,7 @@ source("SECIM_Reporting/R/SECIM_Metabolomics.R")
 source("SECIM_Reporting/R/Norm_Plots.R")
 source("SECIM_Reporting/R/metid_SECIM-main/R/annotate_metabolites_mass_dataset.R")
 source("SECIM_Reporting/R/metid_SECIM-main/R/mzIdentify_mass_dataset.R")
+source("SECIM_Reporting/R/SanityCheck.HRK.R")
 
 ##Mode Neg
 
@@ -189,7 +190,7 @@ for (i in 5:ncol(peakdata)) {
 
 # Now, peakdata has the first four columns unchanged and other columns renamed as per name_mapping
 
-<- <- peakdata[,metadata$Sample.Name]
+peaks <- peakdata[,metadata$Sample.Name]
 
 #merge peakdata and metadata
 data <- data.frame(t(rbind(c(colnames(metadata),peakdata$id),
@@ -360,7 +361,6 @@ for (i in 5:ncol(peakdata)) {
 }
 
 # Now, peakdata has the first four columns unchanged and other columns renamed as per name_mapping
-
 
 peaks <- peakdata[,metadata$Sample.Name]
 data <- data.frame(t(rbind(c(colnames(metadata),peakdata$id),merge(metadata,data.frame(t(peaks)),by.x="Sample.Name",by.y=0))))
