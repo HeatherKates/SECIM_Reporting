@@ -289,7 +289,7 @@ Missing data were imputed by k-nearest neighbor imputation as implemented in the
 
 `r if(norm_method=="quantile"){"Peak intensities were normalized using the quantile method of normalization as implemented the R package MSPrep (McGrath M et al. 2022)."}`
 
-`r if(norm_method=="Sum"){"Peak intensities were normalized sample-wise using sum normalization followed by log (base 10) transformation and pareto scaling as implemented R package MetaboAnalystR (https://github.com/xia-lab/MetaboAnalystR). Please note that this method of normalization results in negative values and these are expected in your normalized dataset."}`
+`r if(norm_method=="Sum"){"Peak intensities were normalized sample-wise using sum normalization followed by log (base 10) transformation as implemented R package MetaboAnalystR (https://github.com/xia-lab/MetaboAnalystR). Please note that this method of normalization results in negative values and these are expected in your normalized dataset."}`
 
 \n Visualizations to assess the effect of normalization are provided below.
 
@@ -326,7 +326,7 @@ Following analysis of all compounds detected in positive and negative ionization
 
 Principal component analysis of untargeted metabolomics data. Two-dimensional PCA score plots reveal possible separation in metabolite profiles related to variables of interest. Ellipses are calculated using the R package car (Fox J. and Weisberg S. 2019) and ~1 Std dev.
 
-```{r}
+```{r,eval=FALSE}
 PCA_DATA <- data.frame(cbind(colnames(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata-1),(num_of_metadata+1):(num_samples+2)])),
                        t(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata-1),(num_of_metadata+1):(num_samples+2)]),
                              t(rbind(
@@ -334,7 +334,7 @@ PCA_DATA <- data.frame(cbind(colnames(Client_Data_Download[["Pos.normalized.data
   Client_Data_Download[["Neg.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Neg.normalized.data"]]),3:(num_samples+2)]))
   )
 
-PCA_DATA[] <- lapply(PCA_DATA, function(col) {
+PCA_DATA[-1] <- lapply(PCA_DATA[-1], function(col) {
   # Try to convert to numeric
   numeric_col <- suppressWarnings(as.numeric(col))
   
@@ -346,6 +346,7 @@ PCA_DATA[] <- lapply(PCA_DATA, function(col) {
   }
 })
 
+
 # PCA
 pca_res <- prcomp(PCA_DATA[,-c(1:num_of_metadata)], center = TRUE, scale. = TRUE)
 scores <- pca_res$x
@@ -353,20 +354,82 @@ scores <- pca_res$x
 
 colors <- RColorBrewer::brewer.pal(num_groups, "Set1")
 
-# Create a basic plotly scatter plot
-fig <- plot_ly()
-
-# First, add all the ellipses
-for(target in unique(PCA_DATA$X1)) {
-  target_data <- as.data.frame(scores[PCA_DATA$X1 == target, 1:2])
-  target_color <- colors[which(as.character(unique(PCA_DATA$X1)) == target)]
-
+# Function to plot ellipse and points for each target
+plot_function <- function(target) {
+  target_data <- as.data.frame(scores[PCA_DATA[2] == target, 1:2])
+  target_color <- colors[which(unique(PCA_DATA[[2]]) == target)]
+  
   # Ellipse
   ellipse_coords <- car::dataEllipse(target_data$PC1, target_data$PC2, 
                                      levels = 0.68, # roughly corresponds to 1 std dev
                                      plot.points = FALSE, add = TRUE, draw = FALSE)
   
-  fig <- fig %>% 
+  fig <<- fig %>% 
+    add_polygons(x = ellipse_coords[,1], y = ellipse_coords[,2],
+                 line = list(color = target_color, dash = "dot"),
+                 fillcolor = target_color, opacity = 0.3,
+                 showlegend = F,
+                 hoverinfo = "skip")  # this tells plotly not to show any hover information for the ellipses
+  
+  text_data <- as.character(rownames(target_data))
+  PC1 <- as.numeric(target_data$PC1)
+  PC2 <- as.numeric(target_data$PC2)
+
+  # Scatter points
+  fig <<- fig %>% 
+    add_trace(data = target_data,
+              x = ~PC1, y = ~PC2, 
+              type = "scatter",
+              mode = "markers",
+              name = target,
+              marker = list(color = target_color),
+              text = ~text_data,
+              hoverinfo = "text")  # this tells plotly to display the text when hovering
+}
+
+fig <- plot_ly()
+lapply(unique(PCA_DATA[[2]])[3:2], plot_function)
+fig
+```
+
+```{r}
+PCA_DATA <- data.frame(cbind(colnames(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata-1),(num_of_metadata+1):(num_samples+2)])),
+                       t(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata-1),(num_of_metadata+1):(num_samples+2)]),
+                             t(rbind(
+  Client_Data_Download[["Pos.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Pos.normalized.data"]]),3:(num_samples+2)],
+  Client_Data_Download[["Neg.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Neg.normalized.data"]]),3:(num_samples+2)]))
+  )
+
+PCA_DATA[-1] <- lapply(PCA_DATA[-1], function(col) {
+  # Try to convert to numeric
+  numeric_col <- suppressWarnings(as.numeric(col))
+  
+  # If there are no NAs after the conversion or the original column was all NAs
+  if (!any(is.na(numeric_col)) || all(is.na(col))) {
+    return(numeric_col)
+  } else {
+    return(col)
+  }
+})
+
+
+# PCA
+pca_res <- prcomp(PCA_DATA[,-c(1:num_of_metadata)], center = TRUE, scale. = TRUE)
+scores <- pca_res$x
+
+
+colors <- RColorBrewer::brewer.pal(num_groups, "Set1")
+# Function to plot ellipse for each target
+plot_ellipse_function <- function(target) {
+  target_data <- as.data.frame(scores[PCA_DATA[2] == target, 1:2])
+  target_color <- colors[which(unique(PCA_DATA[[2]]) == target)]
+  
+  # Ellipse
+  ellipse_coords <- car::dataEllipse(target_data$PC1, target_data$PC2, 
+                                     levels = 0.68, # roughly corresponds to 1 std dev
+                                     plot.points = FALSE, add = TRUE, draw = FALSE)
+  
+  fig <<- fig %>% 
     add_polygons(x = ellipse_coords[,1], y = ellipse_coords[,2],
                  line = list(color = target_color, dash = "dot"),
                  fillcolor = target_color, opacity = 0.3,
@@ -374,36 +437,36 @@ for(target in unique(PCA_DATA$X1)) {
                  hoverinfo = "skip")  # this tells plotly not to show any hover information for the ellipses
 }
 
-# Then, add all the points on top
-for(target in unique(PCA_DATA$X1)) {
-  target_data <- as.data.frame(scores[PCA_DATA$X1 == target, 1:2])
-  target_color <- colors[which(as.character(unique(PCA_DATA$X1)) == target)]
+# Function to plot points for each target
+plot_points_function <- function(target) {
+  target_data <- as.data.frame(scores[PCA_DATA[2] == target, 1:2])
+  target_color <- colors[which(unique(PCA_DATA[[2]]) == target)]
+  
+  text_data <- as.character(rownames(target_data))
+  PC1 <- as.numeric(target_data$PC1)
+  PC2 <- as.numeric(target_data$PC2)
 
   # Scatter points
-  fig <- fig %>% 
-    add_trace(data = as.data.frame(target_data),
+  fig <<- fig %>% 
+    add_trace(data = target_data,
               x = ~PC1, y = ~PC2, 
               type = "scatter",
               mode = "markers",
               name = target,
               marker = list(color = target_color),
-              text = ~rownames(target_data),
+              text = ~text_data,
               hoverinfo = "text")  # this tells plotly to display the text when hovering
 }
-fig %>%
-  layout(
-    legend=list(title=list(text='color')),
-    plot_bgcolor='#e5ecf6',
-    xaxis = list(
-      title = "0",
-      zerolinecolor = "#ffff",
-      zerolinewidth = 2,
-      gridcolor='#ffff'),
-    yaxis = list(
-      title = "1",
-      zerolinecolor = "#ffff",
-      zerolinewidth = 2,
-      gridcolor='#ffff'),title="PCA")
+
+fig <- plot_ly()
+
+# First loop: Plot all ellipses
+invisible(lapply(unique(PCA_DATA[[2]]), plot_ellipse_function))
+
+# Second loop: Plot all points
+invisible(lapply(unique(PCA_DATA[[2]]), plot_points_function))
+
+fig
 ```
 
 ## Univariate analysis </span>
@@ -1024,7 +1087,7 @@ Select areas of within this subnetwork to view and export clusters of interest.
 load("../InputFiles/KEGG_network.RDATA")
 ```
 
-```{r,network,eval=TRUE,warning=FALSE,message=FALSE,fig.dim=c(20,20)}
+```{r,network,eval=TRUE,warning=FALSE,message=FALSE,fig.dim=c(30,20)}
 vars_created <- c("axis.up", "edge_shape", "edge_shapes", "edge_shapes.up", "es.up", "final_vars", 
                   "KEGG_map", "L.up", "message_text", "Ne.up", "network.up", "node.data.up", 
                   "Nv.up", "sig.up.KEGGs.up", "up.graph", "up.plot.up", "v0", "v1", "vars_created", 
