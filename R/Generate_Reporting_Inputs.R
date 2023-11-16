@@ -155,23 +155,46 @@ if (length(samples_to_drop)>0){
 #################################################
 #Create the data object by rbinding the metadata and peak data
 #assume there are four cols before samples
-# Indices of columns from peakdata that match any Sample.Name from metadata
-matching_indices <- unlist(lapply(metadata$Sample.Name, function(x) {
-  grep(paste0("^", x, "_"), colnames(peakdata))
-}))
-matching_indices <- sort(matching_indices)
 
+#The column names in the peakdata may have extra text before and after the sample name.
+#Because it's variable across datasets, the best way to trim that text is to match the colnames
+#to the Sample.name using grep, and then replace the colname with its matching Sample.name
 
+# First, create a mapping between the column names and the sample names
+name_mapping <- sapply(metadata$Sample.Name, function(sample_name) {
+  # Find the column name that matches the sample name
+  matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE)
+  if (length(matched_colname) == 1) {
+    return(matched_colname)
+  } else {
+    warning(paste("Multiple or no matches found for sample name:", sample_name))
+    return(NA)
+  }
+})
 
-# Keep only columns 1:4 and the matched columns
-peakdata <- peakdata[, c(1:4, matching_indices)]
+# Assuming name_mapping and peakdata are as defined
 
-# Rename the columns after the 4th to only have the Sample.Name
-colnames(peakdata)[5:ncol(peakdata)] <- metadata$Sample.Name
+# Subset peakdata to keep only the first four columns and the columns that match name_mapping
+columns_to_keep <- c(colnames(peakdata)[1:4], name_mapping)
+peakdata <- peakdata[, colnames(peakdata) %in% columns_to_keep, drop = FALSE]
 
+# Replace the column names in peakdata that match the names in name_mapping
+# The first four columns are left unchanged
+for (i in 5:ncol(peakdata)) {
+  colname <- colnames(peakdata)[i]
+  if (colname %in% name_mapping) {
+    colnames(peakdata)[i] <- names(name_mapping)[name_mapping == colname]
+  }
+}
 
-peaks <- peakdata[,metadata$Sample.Name]
-data <- data.frame(t(rbind(c(colnames(metadata),peakdata$id),merge(metadata,data.frame(t(peaks)),by.x="Sample.Name",by.y=0))))
+# Now, peakdata has the first four columns unchanged and other columns renamed as per name_mapping
+
+<- <- peakdata[,metadata$Sample.Name]
+
+#merge peakdata and metadata
+data <- data.frame(t(rbind(c(colnames(metadata),peakdata$id),
+                           merge(metadata,data.frame(t(peaks)),by.x="Sample.Name",by.y=0))))
+
 colnames(data) <- data[1,];data <- data[-1,];data <- data %>% dplyr::rename("id"="Sample.Name");rownames(data) <- 1:nrow(data)
 dataset <- data
 
@@ -309,18 +332,35 @@ if (length(samples_to_drop)>0){
 #Create the data object by rbinding the metadata and peak data
 #assume there are four cols before samples
 
-# Indices of columns from peakdata that match any Sample.Name from metadata
-matching_indices <- unlist(lapply(metadata$Sample.Name, function(x) {
-  grep(paste0("^", x, "_"), colnames(peakdata))
-}))
-matching_indices <- sort(matching_indices)
+# First, create a mapping between the column names and the sample names
+name_mapping <- sapply(metadata$Sample.Name, function(sample_name) {
+  # Find the column name that matches the sample name
+  matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE)
+  if (length(matched_colname) == 1) {
+    return(matched_colname)
+  } else {
+    warning(paste("Multiple or no matches found for sample name:", sample_name))
+    return(NA)
+  }
+})
 
+# Assuming name_mapping and peakdata are as defined
 
-# Keep only columns 1:4 and the matched columns
-peakdata <- peakdata[, c(1:4, matching_indices)]
+# Subset peakdata to keep only the first four columns and the columns that match name_mapping
+columns_to_keep <- c(colnames(peakdata)[1:4], name_mapping)
+peakdata <- peakdata[, colnames(peakdata) %in% columns_to_keep, drop = FALSE]
 
-# Rename the columns after the 4th to only have the Sample.Name
-colnames(peakdata)[5:ncol(peakdata)] <- metadata$Sample.Name
+# Replace the column names in peakdata that match the names in name_mapping
+# The first four columns are left unchanged
+for (i in 5:ncol(peakdata)) {
+  colname <- colnames(peakdata)[i]
+  if (colname %in% name_mapping) {
+    colnames(peakdata)[i] <- names(name_mapping)[name_mapping == colname]
+  }
+}
+
+# Now, peakdata has the first four columns unchanged and other columns renamed as per name_mapping
+
 
 peaks <- peakdata[,metadata$Sample.Name]
 data <- data.frame(t(rbind(c(colnames(metadata),peakdata$id),merge(metadata,data.frame(t(peaks)),by.x="Sample.Name",by.y=0))))
