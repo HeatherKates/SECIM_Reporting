@@ -388,7 +388,7 @@ plot_function <- function(target) {
 }
 
 fig <- plot_ly()
-lapply(unique(PCA_DATA[[2]])[3:2], plot_function)
+lapply(unique(PCA_DATA[[2]]), plot_function)
 fig
 ```
 
