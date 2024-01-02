@@ -162,17 +162,22 @@ if (length(samples_to_drop)>0){
 #to the Sample.name using grep, and then replace the colname with its matching Sample.name
 
 # First, create a mapping between the column names and the sample names
+problematic_samples <- c()  #samples not in peakdata
 name_mapping <- sapply(metadata$Sample.Name, function(sample_name) {
   # Find the column name that matches the sample name
-  matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE)
+  #matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE)
+  matched_colname <- grep(paste0("\\[", sample_name, "\\]"), colnames(peakdata), value = TRUE)
   if (length(matched_colname) == 1) {
     return(matched_colname)
   } else {
     warning(paste("Multiple or no matches found for sample name:", sample_name))
+    problematic_samples <<- c(problematic_samples, sample_name)
     return(NA)
   }
 })
-
+name_mapping <- na.omit(name_mapping)
+# Filter metadata to remove any samples not in peakdata
+metadata <- metadata %>% dplyr::filter(!(Sample.Name %in% problematic_samples))
 # Assuming name_mapping and peakdata are as defined
 
 # Subset peakdata to keep only the first four columns and the columns that match name_mapping
@@ -334,16 +339,24 @@ if (length(samples_to_drop)>0){
 #assume there are four cols before samples
 
 # First, create a mapping between the column names and the sample names
+problematic_samples <- c()  #samples not in peakdata
 name_mapping <- sapply(metadata$Sample.Name, function(sample_name) {
   # Find the column name that matches the sample name
-  matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE)
+  #matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE)
+  matched_colname <- grep(paste0("\\[", sample_name, "\\]"), colnames(peakdata), value = TRUE)
   if (length(matched_colname) == 1) {
     return(matched_colname)
   } else {
     warning(paste("Multiple or no matches found for sample name:", sample_name))
+    problematic_samples <<- c(problematic_samples, sample_name)
     return(NA)
   }
 })
+name_mapping <- na.omit(name_mapping)
+# Filter metadata to remove any samples not in peakdata
+metadata <- metadata %>% dplyr::filter(!(Sample.Name %in% problematic_samples))
+# Assuming name_mapping and peakdata are as defined
+
 
 # Assuming name_mapping and peakdata are as defined
 
