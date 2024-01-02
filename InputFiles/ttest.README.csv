@@ -31,8 +31,8 @@ report_results,mz.error,metid: error for match
 report_results,mz.match.score,metid: mz match score
 report_results,Total.score,metid: total score (same as mz match score when RT is not used for matching)
 report_results,Database,metid: Database used for searching
-report_results,B12,Left side proceeded data mean
-report_results,PBS,Right side proceeded data mean
+report_results,[Your Group Name],Left side processed data mean
+report_results,[Your Group Name],Right side processed data mean
 report_results,FC,Fold-Change (processed data) Left side/ Right side
 report_results,log2FC,log2(Fold-Change)
 report_results,Confidence,"Low-confidence tag for peaks with a ""3"" level identification "
@@ -48,14 +48,3 @@ Neg.ttest.metab,,"The full results of the t-test for every peak analyzed in nega
 Neg.processed.data,,"The full processed peak intensity data for every peak analyzed in negative ionization mode. All rows and fields can be linked to ""report_results"" using the descriptions above"
 Neg.normalized.data,,"The ful normalized peak intensity data for every peak analyzed in negative ionization mode. All rows and fields can be linked to ""report_results"" using the descriptions above"
 metadata,,metadata sheet including all variables used for statistical analysis.
-,,
-,,
-,,
-,,
-,,
-,,
-,,
-,,
-,,
-,,
-,,
