@@ -346,7 +346,11 @@ problematic_samples <- c()  #samples not in peakdata
 name_mapping <- sapply(metadata$Sample.Name, function(sample_name) {
   # Find the column name that matches the sample name
   #matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE)
-  matched_colname <- grep(paste0("\\[", sample_name, "\\]"), colnames(peakdata), value = TRUE)
+  if (any(grepl("\\[", colnames(peakdata)))) {
+    matched_colname <- grep(paste0("\\[", sample_name, "\\]"), colnames(peakdata), value = TRUE)
+  } else {
+    matched_colname <- grep(paste0("^[0-9]+","_", sample_name, "_"), colnames(peakdata), value = TRUE)
+  }
   if (length(matched_colname) == 1) {
     return(matched_colname)
   } else {
