@@ -329,10 +329,9 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   
   #Step 12: KEGG ID of metabolites in the peaktable
   if(mode=="Pos"){
-  KEGG.compound <- read.csv("/blue/timgarrett/hkates/Garrett/Reporting/Positive_Garrett_MetaboliteStd_Library_RP_edited2022-2-4TJG_KEGG-ALL caps.csv")%>% distinct()
+  KEGG.compound <- read.csv("/home/hkates/blue_garrett/SECIM_Reporting/InputFiles/library_positive1_MK_QE2.csv")%>% distinct()
   }else if (mode=="Neg"){
-  KEGG.compound <- read.csv("/blue/timgarrett/hkates/Garrett/Reporting/Negative_Garrett_MetaboliteStd_Library_RP_edited211001JGC_KEGG.csv") %>% distinct()
-  }
+  KEGG.compound <- read.csv("/home/hkates/blue_garrett/SECIM_Reporting/InputFiles/library_negative1_MK02.csv")
   #KEGG.compound$name <- gsub(" $","",KEGG.compound$name)
   #KEGG.compound <- KEGG.compound %>% dplyr::select(c("name","KEGG"))
   KEGG.compound <- KEGG.compound %>% mutate_at(c('KEGG'), ~na_if(., "")) 
