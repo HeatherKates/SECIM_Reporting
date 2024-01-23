@@ -329,10 +329,12 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   
   #Step 12: KEGG ID of metabolites in the peaktable
   if(mode=="Pos"){
-  KEGG.compound <- read.csv("/home/hkates/blue_garrett/SECIM_Reporting/InputFiles/library_positive1_MK_QE2.csv")%>% distinct()
+  KEGG.compound <- read.csv("/home/hkates/blue_garrett/SECIM_Reporting/InputFiles/library_positive1_MK_QE2.csv")%>% distinct() %>%
+  mutate(KEGG = na_if(KEGG, "null"))
   }else if (mode=="Neg"){
-  KEGG.compound <- read.csv("/home/hkates/blue_garrett/SECIM_Reporting/InputFiles/library_negative1_MK02.csv")
-  #KEGG.compound$name <- gsub(" $","",KEGG.compound$name)
+  KEGG.compound <- read.csv("/home/hkates/blue_garrett/SECIM_Reporting/InputFiles/library_negative1_MK02.csv")%>%
+    mutate(KEGG = na_if(KEGG, "null"))
+  } #KEGG.compound$name <- gsub(" $","",KEGG.compound$name)
   #KEGG.compound <- KEGG.compound %>% dplyr::select(c("name","KEGG"))
   KEGG.compound <- KEGG.compound %>% mutate_at(c('KEGG'), ~na_if(., "")) 
   #If a compound name has >1 KEGG IDs, save the first one (I don't know a better way to pick atm)
