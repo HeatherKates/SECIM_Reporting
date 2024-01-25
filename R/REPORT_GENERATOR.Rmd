@@ -610,7 +610,7 @@ if(test_type == "nostats"){
 htmltools::HTML(html_text)
 ```
 
-```{r,echo=FALSE,message=FALSE,warning=FALSE,fig.dim = c(8, 6),eval=TRUE}
+```{r,echo=FALSE,message=FALSE,warning=FALSE,fig.dim = c(30, 30),eval=TRUE}
 barplotlist = list()
   for (i in 1:length(contrasts)){
     
@@ -631,9 +631,11 @@ nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==co
 #make an empty dataframe
 bar.df <- data.frame(matrix(ncol = 5, nrow = 0))
 for (classvar in levels(as.factor(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% dplyr::select(Class) %>% unlist()))){
-  if((nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC> 0))+
+  if(
+    #The number of increases
+    (nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC> 0))+ #plus
   #The number of decreases
-nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC< 0)))>0){
+nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC< 0)))>0){ #is greater than 0, then 
   #the class
 barplotvector <- c(classvar,
 #The number of increases
@@ -641,8 +643,9 @@ barplotvector <- c(classvar,
   #The number of decreases
   nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC< 0)),
   #The metabolites that increased
-gsub("([^,]+,[^,]+),", "\\1\n", toString(t(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% dplyr::filter(Class==classvar) %>% filter(compound %in% sig_peaks[[i]]) %>% filter(log2FC> 0)%>% dplyr::select(c(compound,Level))))),
-gsub("([^,]+,[^,]+),", "\\1\n", toString(t(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% dplyr::filter(Class==classvar) %>% filter(compound %in% sig_peaks[[i]]) %>% filter(log2FC < 0)%>% dplyr::select(c(compound,Level))))))
+gsub("(?m),\\s(?!\\d)|,\\s*$", "\\1\n", toString(t(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% dplyr::filter(Class==classvar) %>% filter(compound %in% sig_peaks[[i]]) %>% filter(log2FC> 0)%>% dplyr::select(c(compound,Level)))),perl=TRUE),
+#The metabolites that decreased
+gsub("(?m),\\s(?!\\d)|,\\s*$", "\\1\n", toString(t(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% dplyr::filter(Class==classvar) %>% filter(compound %in% sig_peaks[[i]]) %>% filter(log2FC < 0)%>% dplyr::select(c(compound,Level)))),perl=TRUE))
 bar.df<<-rbind(barplotvector,bar.df)
 }
 }
@@ -715,8 +718,7 @@ fig <- fig %>% layout(title = paste("Significant changes by metabolite class\n("
          xaxis = list(title = ""),
          #It would be better to set the range to min,max across all contrasts,
          #But that information is not available when each plot is drawn.
-         yaxis = list(title = "",tick0=0, dtick=1,range = list(-max(data.frame(barplotminmax.vector)),max(data.frame(barplotminmax.vector)))),margin = list(l = 75, t = 150))
-fig %>% layout(title="TEST")
+         yaxis = list(title = "",tick0=0, dtick=1,range = list(-max(data.frame(barplotminmax.vector)),max(data.frame(barplotminmax.vector)))),margin = list(l = 75, t = 150),width=900,height=600)
 barplotlist[[i]] = ggplotly(fig) 
 } else
 {

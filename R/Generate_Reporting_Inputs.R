@@ -167,7 +167,7 @@ name_mapping <- sapply(metadata$Sample.Name, function(sample_name) {
   # Find the column name that matches the sample name
   if (any(grepl("\\[", colnames(peakdata)))) {
     matched_colname <- grep(paste0("\\[", sample_name, "\\]"), colnames(peakdata), value = TRUE)
-  } else if(grepl("^[0-9]+_", metadata$Sample.Name)){ 
+  } else if(any(grepl("^[0-9]+_", metadata$Sample.Name))){ 
     matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE)
   } else {
     matched_colname <- grep(paste0("^[0-9]+","_", sample_name, "_"), colnames(peakdata), value = TRUE)
@@ -350,6 +350,8 @@ name_mapping <- sapply(metadata$Sample.Name, function(sample_name) {
   #matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE)
   if (any(grepl("\\[", colnames(peakdata)))) {
     matched_colname <- grep(paste0("\\[", sample_name, "\\]"), colnames(peakdata), value = TRUE)
+  } else if(any(grepl("^[0-9]+_", metadata$Sample.Name))){ 
+    matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE)
   } else {
     matched_colname <- grep(paste0("^[0-9]+","_", sample_name, "_"), colnames(peakdata), value = TRUE)
   }
