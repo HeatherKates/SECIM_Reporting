@@ -226,7 +226,7 @@ dataset <- data
 #debug(SECIM_Metabolomics)
 neg.output <- SECIM_Metabolomics(dataset=data,peakdata=peakdata,num_meta=num_meta,original_data=data,contrast_var=contrast_var,
   subset=subset,
-  anova_formula=anova_formula,lm_model=lm_model,test_type=test_type,emmeans_var=contrast_var,mode="Neg",
+  anova_formula=anova_formula,SECIM_column=SECIM_column,lm_model=lm_model,test_type=test_type,emmeans_var=contrast_var,mode="Neg",
   metid_DB_file=metid_DB_file,client=client,metadata=metadata)
 
 #Positive mode
@@ -410,7 +410,7 @@ dataset <- data
 pos.output <- SECIM_Metabolomics(
   dataset=data,peakdata=peakdata,num_meta=num_meta,original_data=data,contrast_var=contrast_var,
   subset=subset,
-  anova_formula=anova_formula,lm_model=lm_model,test_type=test_type,emmeans_var=contrast_var,mode="Pos",
+  anova_formula=anova_formula,SECIM_column=SECIM_column,lm_model=lm_model,test_type=test_type,emmeans_var=contrast_var,mode="Pos",
   metid_DB_file=metid_DB_file,client=client,metadata=metadata)
 
 #save.image(paste(client,"functionoutput.RDATA",sep="_"))
