@@ -1,5 +1,5 @@
 Generate_Report_Inputs <-function(client,samples_to_drop=NULL,mzmine_version,ReferenceLevel=NULL,Input,contrast_var,
-                                  num_meta,anova_formula=NULL,lm_model=NULL,test_type,subset=NULL,metid_DB_file){
+                                  num_meta,SECIM_column,anova_formula=NULL,lm_model=NULL,test_type,subset=NULL,metid_DB_file){
   #client="Dudeja.Serum"
   #samples_to_drop=c("")
   #mzmine_version=2

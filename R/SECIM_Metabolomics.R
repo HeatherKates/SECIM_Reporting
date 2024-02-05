@@ -12,7 +12,7 @@
 #emmeans_contrasts=ALL or like: `list(c("Level1", "Level2"), c("Level3", "Level4"))`
 #I just need to find out why there is an "X" before the sample names in the dataset 4/20 4:32
 SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_var,anova_formula,lm_model,
-                              test_type,subset,emmeans_var,mode,metid_DB_file,client,metadata){
+                              test_type,subset,SECIM_column,emmeans_var,mode,metid_DB_file,client,metadata){
   
 
   # Store the names of objects in the global environment before loading the file
