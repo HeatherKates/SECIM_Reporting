@@ -170,8 +170,8 @@ name_mapping <- sapply(metadata$Sample.Name, function(sample_name) {
   } else if(any(grepl("^[0-9]+_", metadata$Sample.Name))){ #If the sample names start with a number, look for the colnames to start with the sample name (bc it already includes num)
     matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE)
   } else { #If the sample names don't start with a number, look for a number, then the sample name in colnames (bc the sample name doesn't include the num)
-    #matched_colname <- grep(paste0("^[0-9]+","_", sample_name, "_"), colnames(peakdata), value = TRUE)
-    matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE) #Temporary for Dudeja bc those sample names are dumb
+    matched_colname <- grep(paste0("^[0-9]+","_", sample_name, "_"), colnames(peakdata), value = TRUE)
+    #matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE) #Temporary for Dudeja bc those sample names are dumb
     }
   if (length(matched_colname) == 1) {
     return(matched_colname)
@@ -354,8 +354,8 @@ name_mapping <- sapply(metadata$Sample.Name, function(sample_name) {
   } else if(any(grepl("^[0-9]+_", metadata$Sample.Name))){ 
     matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE)
   } else {
-    #matched_colname <- grep(paste0("^[0-9]+","_", sample_name, "_"), colnames(peakdata), value = TRUE)
-    matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE) #temporary for Dudeja
+    matched_colname <- grep(paste0("^[0-9]+","_", sample_name, "_"), colnames(peakdata), value = TRUE)
+    #matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE) #temporary for Dudeja
     }
   if (length(matched_colname) == 1) {
     return(matched_colname)
