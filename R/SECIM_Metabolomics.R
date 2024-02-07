@@ -335,19 +335,27 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
     if (SECIM_column == "Evospere-PFP") {
       KEGG.compound <- read.csv("/home/hkates/blue_garrett/SECIM_Reporting/InputFiles/library_positive1_MK_QE2.csv") %>%
         distinct() %>%
-        mutate(KEGG = na_if(KEGG, "null"))
+        mutate(KEGG = na_if(KEGG, "null"))%>%
+                 mutate(KEGG = na_if(KEGG, "None"))%>%
+                          mutate(KEGG = na_if(KEGG, ""))
     } else if (SECIM_column == "ACE-PFP") {
-      KEGG.compound <- read.csv("/home/hkates/blue_garrett/SECIM_Reporting/InputFiles/Positive_Garrett_MetaboliteStd_Library_RP_edited2022-2-4TJG_KEGG-ALL caps.csv") %>%
+      KEGG.compound <- read.csv("/home/hkates/blue_garrett/SECIM_Reporting/InputFiles/Positive_ACE-PFPs.csv") %>%
         distinct() %>%
-        mutate(KEGG = na_if(KEGG, "null"))
+        mutate(KEGG = na_if(KEGG, "null"))%>%
+        mutate(KEGG = na_if(KEGG, "None"))%>%
+        mutate(KEGG = na_if(KEGG, ""))
     }
   } else if (mode == "Neg") {
     if (SECIM_column == "Evospere-PFP") {
       KEGG.compound <- read.csv("/home/hkates/blue_garrett/SECIM_Reporting/InputFiles/library_negative1_MK02.csv") %>%
-        mutate(KEGG = na_if(KEGG, "null"))
+        mutate(KEGG = na_if(KEGG, "null"))%>%
+        mutate(KEGG = na_if(KEGG, "None"))%>%
+        mutate(KEGG = na_if(KEGG, ""))
     } else if (SECIM_column == "ACE-PFP") {
-      KEGG.compound <- read.csv("/home/hkates/blue_garrett/SECIM_Reporting/InputFiles/Negative_Garrett_MetaboliteStd_Library_RP_edited211001JGC_KEGG.csv") %>%
-        mutate(KEGG = na_if(KEGG, "null"))
+      KEGG.compound <- read.csv("/home/hkates/blue_garrett/SECIM_Reporting/InputFiles/Negative_ACE-PFP.csv") %>%
+        mutate(KEGG = na_if(KEGG, "null"))%>%
+        mutate(KEGG = na_if(KEGG, "None"))%>%
+        mutate(KEGG = na_if(KEGG, ""))
     }
   }
   

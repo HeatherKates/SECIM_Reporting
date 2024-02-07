@@ -73,21 +73,26 @@ library(dplyr)
 library(plotly)
 library(htmltools)
 library(car)
+```
 
+```{r}
 #source("Report_params.template.R") #Get variables
 Client_Data_Download <- ReportInput
 
 #Difference in v3.3 from 3.2 is adding an if statement to pick whether to show padj or p
 if(test_type %in% c("anova", "lmm","repeated_measures_anova")){
 p_type="adj.p.value"
+sig_knowns <- nrow(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05) %>% filter(Level==1)) 
 } 
 if (test_type =="t.test"){
   if(nrow(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05)) > 10){
     p_type="adj.p.value"} else {
       p_type="p.value"}
+  sig_knowns <- nrow(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05) %>% filter(Level==1)) 
 }
 if (test_type=="nostats"){
   p_type="log2FC"
+  sig_knowns <- nrow(Client_Data_Download[["report_results"]] %>% filter(abs(log2FC)>0.58) %>% filter(Level==1)) 
 }
 ```
 
@@ -549,9 +554,9 @@ if(p_type=="log2FC"){
 
 ```{r}
 if(test_type == "nostats"){
-  html_text <- "## Table of changed metabolites </span><br>"
+  html_text <- "<h2>Table of changed metabolites </h2><br>"
 } else {
-  html_text <-"## Table of significantly changed metabolites </span><br>"
+  html_text <-"<h2>Table of significantly changed metabolites </h2><br>"
 }
 htmltools::HTML(html_text)
 ```
@@ -574,13 +579,34 @@ htmltools::HTML(html_text)
 Unknown compounds (those unidentified by our internal metabolite library) were assigned low-confidence metabolite names and KEGG IDs based on mass and the HMDB database as implemented in the R package metid (Shen X 2022). The annotation of these compounds is assigned a confidence value of "3" in downloadable tables and in the report. Compounds identified using our internal library are assigned a confidence value of "1". Compounds that could not be identified via either method are annotated using their m/z_RT values and the confidence level is blank.
 
 ```{r,warn=FALSE}
-if(p_type=="p.value"){
-datatable(Client_Data_Download[["report_results"]] %>% filter(p.value<0.05) %>% dplyr::select(c(compound,p.value,Level,contrast,contains("FC"))) %>% dplyr::mutate(across(where(is.numeric), round, 5)),  caption = 'Table of significantly changed metabolites for (p-value < 0.05)')}
-if (p_type == "adj.p.value"){
-datatable(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05) %>% dplyr::select(c(compound,adj.p.value,Level,contrast,contains("FC"))) %>% dplyr::mutate(across(where(is.numeric), round, 5)),  caption = 'Table of significantly changed metabolites for (adjusted p-value < 0.05)')
+if(p_type == "p.value"){
+  datatable(Client_Data_Download[["report_results"]] %>%
+              filter(p.value < 0.05) %>%
+              dplyr::select(c(compound, p.value, Level, contrast, contains("FC"))) %>%
+              mutate(Level = factor(Level, levels = c("1", "3", "")), 
+                     across(where(is.numeric), round, 5)) %>%
+              arrange(Level, p.value), 
+            caption = 'Table of significantly changed metabolites for (p-value < 0.05)')
 }
-if (p_type=="log2FC"){
-datatable(Client_Data_Download[["report_results"]] %>% filter(abs(log2FC)>1.5) %>% dplyr::select(c(compound,Level,contrast,contains("FC"))) %>% dplyr::mutate(across(where(is.numeric), round, 5)),  caption = 'Table of changed metabolites (log2FC > 1.5)')
+
+if(p_type == "adj.p.value"){
+  datatable(Client_Data_Download[["report_results"]] %>%
+              filter(adj.p.value < 0.05) %>%
+              dplyr::select(c(compound, adj.p.value, Level, contrast, contains("FC"))) %>%
+              mutate(Level = factor(Level, levels = c("1", "3", "")), 
+                     across(where(is.numeric), round, 5)) %>%
+              arrange(Level, adj.p.value), 
+            caption = 'Table of significantly changed metabolites for (adjusted p-value < 0.05)')
+}
+
+if(p_type == "log2FC"){
+  datatable(Client_Data_Download[["report_results"]] %>%
+              filter(abs(log2FC) > 1.5) %>%
+              dplyr::select(c(compound, Level, contrast, contains("FC"))) %>%
+              mutate(Level = factor(Level, levels = c("1", "3", "")), 
+                     across(where(is.numeric), round, 5)) %>%
+              arrange(Level, log2FC), 
+            caption = 'Table of changed metabolites (log2FC > 1.5)')
 }
 ```
 
@@ -592,9 +618,15 @@ All plots below can be zoomed, selected, and downloaded individually (and/or as 
 
 ```{r}
 if(test_type == "nostats"){
-  html_text <- "Metabolites with >1.5 log2FC change are shown by metabolite class. </span><br><br>"
+  if(sig_knowns<20){
+  html_text <- "Metabolites with >1.5 log2FC change are shown by metabolite class. </span><br><br>"}else{
+    html_text <- "Level 1 Metabolites with >1.5 log2FC change are shown by metabolite class. </span><br><br>"
+  }
 } else {
-  html_text <- paste0("Metabolites with significant changes (",p_type,"<0.05) are shown by metabolite class.</span><br><br>")
+  if(sig_knowns<20){
+  html_text <- paste0("Metabolites with significant changes (",p_type,"<0.05) are shown by metabolite class.</span><br><br>")}else{
+     html_text <- paste0("Level 1 Metabolites with significant changes (",p_type,"<0.05) are shown by metabolite class. </span><br><br>")
+  }
 }
 htmltools::HTML(html_text)
 ```
@@ -716,7 +748,7 @@ fig <- fig %>% layout(title = paste("Significant changes by metabolite class\n("
          xaxis = list(title = ""),
          #It would be better to set the range to min,max across all contrasts,
          #But that information is not available when each plot is drawn.
-         yaxis = list(title = "",tick0=0, dtick=1,range = list(-max(data.frame(barplotminmax.vector)),max(data.frame(barplotminmax.vector)))),margin = list(l = 75, t = 150),width=900,height=600)
+         yaxis = list(title = "",tick0=0, dtick=1,range = list(-max(data.frame(barplotminmax.vector)),max(data.frame(barplotminmax.vector)))),margin = list(l = 75, t = 150),width=900,height=700)
 barplotlist[[i]] = ggplotly(fig) 
 } else
 {
@@ -804,8 +836,9 @@ for (i in c(1:length(contrasts))){
 ## Order results by p.value values
 if(p_type=="adj.p.value"){
   top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% mutate(Level = factor(Level, levels = c("1", "3", ""), ordered = TRUE)) %>%
-  arrange(adj.p.value, Level) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
-  Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(adj.p.value) %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
+  arrange(Level,adj.p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
+  Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]])  %>% mutate(Level = factor(Level, levels = c("1", "3", ""), ordered = TRUE)) %>%
+  arrange(Level,adj.p.value)  %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
 }
 if(p_type=="p.value"){
   top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
@@ -1001,8 +1034,10 @@ for (i in 1:length(contrasts)){
 #Manual changes needed for where metabolite data begins and for groupvar
 ## Order results by p.value values
 if(p_type=="adj.p.value"){
-  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast == contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(adj.p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
-  Client_Data_Download[["report_results"]] %>% filter(contrast == contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(adj.p.value) %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
+  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% mutate(Level = factor(Level, levels = c("1", "3", ""), ordered = TRUE)) %>%
+  arrange(Level,adj.p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
+  Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]])  %>% mutate(Level = factor(Level, levels = c("1", "3", ""), ordered = TRUE)) %>%
+  arrange(Level,adj.p.value)  %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
 }
 if(p_type=="p.value"){
   top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast == contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
@@ -1073,9 +1108,9 @@ KEGG analysis was performed with the R package FELLA (https://bmcbioinformatics.
 
 ```{r}
 if(test_type == "nostats"){
-  html_text <- "The most changed (log2FC) compounds input into the KEGG subnetwork analysis are shown with red squares (see key) and are drawn in their KEGG subnetwork.<br> Hover over nodes to view annotation and to see the confidence of our identification of a particular input KEGG compound.<br>(If no subnetworks are visible below, there were no >1.5 log2FC changed metabolites with KEGG IDs.)<br><br>"
+  html_text <- "The most changed (log2FC) compounds input into the KEGG subnetwork analysis are shown with red squares (see key) and are drawn in their KEGG subnetwork.<br><br> Hover over nodes to view annotation and to see the confidence of our identification of a particular input KEGG compound.<br>(If no subnetworks are visible below, there were no >1.5 log2FC changed metabolites with KEGG IDs.)<br><br>"
 } else {
-  html_text <- "The significantly changed compounds input into the KEGG subnetwork analysis are shown with red squares (see key) and are drawn in their KEGG subnetwork.<br> Hover over nodes to view annotation and to see the confidence of our identification of a particular input KEGG compound.<br> (If no subnetworks are visible below, there were no significantly changed metabolites with KEGG IDs.)<br><br>"
+  html_text <- "The significantly changed compounds input into the KEGG subnetwork analysis are shown with red squares (see key) and are drawn in their KEGG subnetwork.<br><br> Hover over nodes to view annotation and to see the confidence of our identification of a particular input KEGG compound.<br> (If no subnetworks are visible below, there were no significantly changed metabolites with KEGG IDs.)<br><br>"
 }
 htmltools::HTML(html_text)
 ```
@@ -1124,10 +1159,16 @@ for (i in 1:length(contrasts)){
   #UP network
   
   #Make a list of significant KEGG compounds
+  if(sig_knowns < 20){
   network_data[["sig.up.KEGGs.up"]][[i]] <- Client_Data_Download[["report_results"]] %>% 
     filter(contrast==contrasts[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>%
            filter(log2FC > 0) %>% 
+           dplyr::select(KEGG) %>% filter(!KEGG=="")} else{
+        network_data[["sig.up.KEGGs.up"]][[i]] <- Client_Data_Download[["report_results"]] %>% 
+    filter(contrast==contrasts[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>%
+           filter(log2FC > 0) %>% filter(Level==1) %>%
            dplyr::select(KEGG) %>% filter(!KEGG=="")
+           }
   
   #If statement #1: Only run the enrich function if there are significant KEGGs to input (otherwise there'd be an error)
   
@@ -1193,10 +1234,16 @@ for (i in 1:length(contrasts)){
 #DOWN network
   
   #Make a list of significant KEGG compounds
+  if(sig_knowns < 20){
   network_data[["sig.down.KEGGs.down"]][[i]] <- Client_Data_Download[["report_results"]] %>% 
     filter(contrast==contrasts[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>%
            filter(log2FC < 0) %>% 
+           dplyr::select(KEGG) %>% filter(!KEGG=="")} else{
+        network_data[["sig.down.KEGGs.down"]][[i]] <- Client_Data_Download[["report_results"]] %>% 
+    filter(contrast==contrasts[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>%
+           filter(log2FC > 0) %>% filter(Level==1) %>%
            dplyr::select(KEGG) %>% filter(!KEGG=="")
+           }
   
   #If statement #1: Only run the enrich function if there are significant KEGGs to input (otherwise there'd be an error)
   
