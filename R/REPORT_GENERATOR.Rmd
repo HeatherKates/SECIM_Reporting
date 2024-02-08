@@ -552,6 +552,29 @@ if(p_type=="log2FC"){
 }
 ```
 
+## Compound identification </span>
+
+Unknown compounds (those unidentified by our internal metabolite library) were assigned low-confidence metabolite names and KEGG IDs based on mass and the HMDB database as implemented in the R package metid (Shen X 2022). The annotation of these compounds is assigned a confidence value of "3" in downloadable tables and in the report. Compounds identified using our internal library are assigned a confidence value of "1". Compounds that could not be identified via either method are annotated using their m/z_RT values and the confidence level is blank.
+
+```{r}
+#Make all of this into an R code block so a for loop can be used
+
+if(p_type %in% c("p.value","adj.p.value")){
+  for (i in 1:length(contrasts)){
+    print(paste(nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(compound %in% sig_peaks[[i]] & Level == 1))
+, "significantly changed metabolites(",p_type,"< 0.05) between",str_split(contrasts[[i]],"-")[[1]][[1]], "and",str_split(contrasts[[i]],"-")[[1]][[2]]," were annotated with high confidence (Level 1) ",sep=" "))
+    }
+}
+if(p_type=="log2FC"){
+  for (i in 1:length(contrasts)){
+    print(paste(nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(compound %in% sig_peaks[[i]] & Level == 1))
+, "significantly changed metabolites  (",p_type,"> 1.5) between",str_split(contrasts[[i]],"-")[[1]][[1]], "and",str_split(contrasts[[i]],"-")[[1]][[2]],"were annotated with high confidence (Level 1)",sep=" "))
+    }  
+}
+```
+
+**For visualizations, compounds are sorted by confidence and then by significance so that compounds with high-confidence IDs are shown first**
+
 ```{r}
 if(test_type == "nostats"){
   html_text <- "<h2>Table of changed metabolites </h2><br>"
@@ -569,14 +592,12 @@ htmltools::HTML(html_text)
 
 ```{r}
 if (test_type == "nostats") {
-  html_text <- "To view results for a test of interest, click the arrow at the top of the contrast column to sort by contrast or use the search bar to search for a contrast. To see what metabolites were changed for more than one contrast, sort by metabolite and see how many contrasts were significant for each metabolite. (Tip: Reverse sorting by Metabolite will display known metabolites first.)<br>"
+  html_text <- "To view results for a test of interest, click the arrow at the top of the contrast column to sort by contrast or use the search bar to search for a contrast. To see what metabolites were changed for more than one contrast, sort by metabolite and see how many contrasts were significant for each metabolite. (Tip: Reverse sorting by Metabolite will display known metabolites first.)<br><br>"
 } else {
-  html_text <- "To view results for a test of interest, click the arrow at the top of the contrast column to sort by contrast or use the search bar to search for a contrast. To see what metabolites were significantly changed for more than one test, sort by metabolite and see how many contrasts were significant for each metabolite. (Tip: Reverse sorting by Metabolite will display known metabolites first.)<br>"
+  html_text <- "To view results for a test of interest, click the arrow at the top of the contrast column to sort by contrast or use the search bar to search for a contrast. To see what metabolites were significantly changed for more than one test, sort by metabolite and see how many contrasts were significant for each metabolite. (Tip: Reverse sorting by Metabolite will display known metabolites first.)<br><br>"
 }
 htmltools::HTML(html_text)
 ```
-
-Unknown compounds (those unidentified by our internal metabolite library) were assigned low-confidence metabolite names and KEGG IDs based on mass and the HMDB database as implemented in the R package metid (Shen X 2022). The annotation of these compounds is assigned a confidence value of "3" in downloadable tables and in the report. Compounds identified using our internal library are assigned a confidence value of "1". Compounds that could not be identified via either method are annotated using their m/z_RT values and the confidence level is blank.
 
 ```{r,warn=FALSE}
 if(p_type == "p.value"){
@@ -616,6 +637,8 @@ All plots below can be zoomed, selected, and downloaded individually (and/or as 
 
 ## Barplots of changed metabolites by metabolite KEGG class
 
+**If your study/contrast yielded > 20 significantly changed compounds with high-confidence IDs, only high-confidence IDs are included as input compounds.**
+
 ```{r}
 if(test_type == "nostats"){
   if(sig_knowns<20){
@@ -641,6 +664,7 @@ htmltools::HTML(html_text)
 ```
 
 ```{r,echo=FALSE,message=FALSE,warning=FALSE,fig.dim = c(30, 30),eval=TRUE}
+if(sig_knowns<20){
 barplotlist = list()
   for (i in 1:length(contrasts)){
     
@@ -757,6 +781,126 @@ print("No metabolite classes with significant changes")
 }
   }
 htmltools::tagList(setNames(barplotlist, NULL))
+} else {
+  #If more than 20 significantly changed known compounds
+  barplotlist = list()
+  for (i in 1:length(contrasts)){
+    
+##Make a min and max for a contrast's barplot fig
+#make an empty dataframe
+barplotminmax.vector <- list()
+for (classvar in levels(as.factor(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% dplyr::select(Class) %>% unlist()))){
+  #the class
+barplotminmax.vector <- c(barplotminmax.vector,
+#The number of increases
+nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC> 0 & Level == 1)),
+  #The number of decreases
+  nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]]&log2FC< 0& Level == 1)))
+}
+##
+
+#Summarize by class
+#make an empty dataframe
+bar.df <- data.frame(matrix(ncol = 5, nrow = 0))
+for (classvar in levels(as.factor(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% dplyr::select(Class) %>% unlist()))){
+  if(
+    #The number of increases
+    (nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC> 0& Level == 1))+ #plus
+  #The number of decreases
+nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC< 0& Level == 1)))>0){ #is greater than 0, then 
+  #the class
+barplotvector <- c(classvar,
+#The number of increases
+  nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC> 0& Level == 1)),
+  #The number of decreases
+  nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC< 0& Level == 1)),
+  #The metabolites that increased
+gsub("(?m),\\s(?!\\d)|,\\s*$", "\\1\n", toString(t(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% dplyr::filter(Class==classvar) %>% filter(compound %in% sig_peaks[[i]]) %>% filter(log2FC> 0& Level == 1)%>% dplyr::select(c(compound,Level)))),perl=TRUE),
+#The metabolites that decreased
+gsub("(?m),\\s(?!\\d)|,\\s*$", "\\1\n", toString(t(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% dplyr::filter(Class==classvar) %>% filter(compound %in% sig_peaks[[i]]) %>% filter(log2FC < 0& Level == 1)%>% dplyr::select(c(compound,Level)))),perl=TRUE))
+bar.df<<-rbind(barplotvector,bar.df)
+}
+}
+#Make the colnames the first row
+colnames(bar.df) <- bar.df[1,]
+#Add colnames
+if(test_type=="nostats"){
+  colnames(bar.df) <- c("Class","Increases","Decreases","Increase_Text","Decrease_Text")
+  if(sum(as.numeric(bar.df$Increases)+as.numeric(bar.df$Decreases))>0){
+fig <- plot_ly()
+fig <- fig %>% add_bars(
+    x = bar.df$Class,
+    y = as.numeric(bar.df$Decreases),
+    hovertemplate = bar.df$Decrease_Text,
+    base = -as.numeric(bar.df$Decreases),
+    marker = list(
+      color = 'red'
+    ),
+    name = paste("Decreased in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to",
+                            str_split(contrasts[[i]],pattern="-")[[1]][2]))
+fig <- fig %>% add_bars(
+    x = bar.df$Class,
+    y = as.numeric(bar.df$Increases),
+    base = 0,
+    hovertemplate = bar.df$Increase_Text,
+    marker = list(
+      color = 'blue'
+    ),
+     name = paste("Increased in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to",
+                            str_split(contrasts[[i]],pattern="-")[[1]][2])
+  )
+
+fig <- fig %>% layout(title = paste(" >1.5 log2FC changes by metabolite class\n(",contrasts[[i]],")"),
+         xaxis = list(title = ""),
+         #It would be better to set the range to min,max across all contrasts,
+         #But that information is not available when each plot is drawn.
+         yaxis = list(title = "",tick0=0, dtick=1,range = list(-max(data.frame(barplotminmax.vector)),max(data.frame(barplotminmax.vector)))),margin = list(l = 75, t = 150))
+fig %>% layout(title="TEST")
+barplotlist[[i]] = ggplotly(fig) 
+} else{
+print("No metabolite classes with >1.5 log2FC changes")
+}
+  }else{
+colnames(bar.df) <- c("Class","Significant_Increases","Significant_Decreases","Increase_Text","Decrease_Text")
+if(sum(as.numeric(bar.df$Significant_Increases)+as.numeric(bar.df$Significant_Decreases))>0){
+fig <- plot_ly()
+fig <- fig %>% add_bars(
+    x = bar.df$Class,
+    y = as.numeric(bar.df$Significant_Decreases),
+    hovertemplate = bar.df$Decrease_Text,
+    base = -as.numeric(bar.df$Significant_Decreases),
+    marker = list(
+      color = 'red'
+    ),
+    name = paste("Decreased in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to",
+                            str_split(contrasts[[i]],pattern="-")[[1]][2]))
+fig <- fig %>% add_bars(
+    x = bar.df$Class,
+    y = as.numeric(bar.df$Significant_Increases),
+    base = 0,
+    hovertemplate = bar.df$Increase_Text,
+    marker = list(
+      color = 'blue'
+    ),
+     name = paste("Increased in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to",
+                            str_split(contrasts[[i]],pattern="-")[[1]][2])
+  )
+
+fig <- fig %>% layout(title = paste("Significant changes by metabolite class\n(",contrasts[[i]],")"),
+         xaxis = list(title = ""),
+         #It would be better to set the range to min,max across all contrasts,
+         #But that information is not available when each plot is drawn.
+         yaxis = list(title = "",tick0=0, dtick=1,range = list(-max(data.frame(barplotminmax.vector)),max(data.frame(barplotminmax.vector)))),margin = list(l = 75, t = 150),width=900,height=700)
+barplotlist[[i]] = ggplotly(fig) 
+} else
+{
+print("No metabolite classes with significant changes")
+}
+}
+  }
+htmltools::tagList(setNames(barplotlist, NULL))
+  
+}
 ```
 
 ## Volcano Plots
@@ -1106,6 +1250,8 @@ htmltools::tagList(setNames(heatmaplist, NULL))
 
 KEGG analysis was performed with the R package FELLA (https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2487-5). Starting from a list of metabolites of interest, FELLA applies a null diffusive process over a network-based representation of the KEGG database and derive a relevant sub-network. The result of this analysis is a list of affected pathways and a graphical sub-pathway representation. The input list of metabolites of interest is indicated by the plot title. 
 
+**If your study/contrast yielded > 20 significantly changed compounds with high-confidence IDs, only high-confidence IDs are included as input compounds.**
+
 ```{r}
 if(test_type == "nostats"){
   html_text <- "The most changed (log2FC) compounds input into the KEGG subnetwork analysis are shown with red squares (see key) and are drawn in their KEGG subnetwork.<br><br> Hover over nodes to view annotation and to see the confidence of our identification of a particular input KEGG compound.<br>(If no subnetworks are visible below, there were no >1.5 log2FC changed metabolites with KEGG IDs.)<br><br>"
@@ -1123,7 +1269,7 @@ Select areas of within this subnetwork to view and export clusters of interest.
 load("../InputFiles/KEGG_network.RDATA")
 ```
 
-```{r,network,eval=TRUE,warning=FALSE,message=FALSE,fig.dim=c(30,20)}
+```{r,network,eval=TRUE,warning=FALSE,message=FALSE,fig.dim=c(40,40)}
 vars_created <- c("axis.up", "edge_shape", "edge_shapes", "edge_shapes.up", "es.up", "final_vars", 
                   "KEGG_map", "L.up", "message_text", "Ne.up", "network.up", "node.data.up", 
                   "Nv.up", "sig.up.KEGGs.up", "up.graph", "up.plot.up", "v0", "v1", "vars_created", 
@@ -1152,8 +1298,6 @@ network_data <- setNames(
   lapply(vars_created, function(x) elements_list),
   vars_created
 )
-
-source("Generate_network.R")
 
 for (i in 1:length(contrasts)){
   #UP network
@@ -1201,7 +1345,8 @@ for (i in 1:length(contrasts)){
     threshold= 0.05,
     nlimit=400)
   }
-  
+source("Generate_network.R")
+
   # If statement #3: main code block if statement is necessary because even if there is a FELLA object, there could still be no graph
   if (!is.null(network_data[["up.graph"]][[i]])) {
     network_data[["upnetwork"]][[i]] <- generate_network(i, network_data,"up","more")
