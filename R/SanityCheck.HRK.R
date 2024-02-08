@@ -263,11 +263,11 @@ SanityCheckDataHRK <- function(mSetObj=NA){
   }
   
   # make sure the meta.info is synchronized with data
-  if(substring(mSetObj$dataSet$format,4,5)=="mf"){
-    my.sync <- .sync.data.metadata(int.mat, mSetObj$dataSet$meta.info);
-    int.mat <- my.sync$data;
-    mSetObj$dataSet$meta.info <- my.sync$metadata;
-  }
+  ##if(substring(mSetObj$dataSet$format,4,5)=="mf"){
+  ##  my.sync <- .sync.data.metadata(int.mat, mSetObj$dataSet$meta.info);
+  ##  int.mat <- my.sync$data;
+  ##  mSetObj$dataSet$meta.info <- my.sync$metadata;
+  ##}
   
   qs::qsave(as.data.frame(int.mat), "preproc.qs");
   
