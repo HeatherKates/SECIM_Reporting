@@ -12,7 +12,7 @@
 #emmeans_contrasts=ALL or like: `list(c("Level1", "Level2"), c("Level3", "Level4"))`
 #I just need to find out why there is an "X" before the sample names in the dataset 4/20 4:32
 SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_var,anova_formula,lm_model,
-                              test_type,subset,SECIM_column,emmeans_var,mode,metid_DB_file,client,metadata){
+                              test_type,subset,SECIM_column,emmeans_var,mode,metid_DB_file,client,metadata,paired=paired){
   
 
   # Store the names of objects in the global environment before loading the file
@@ -122,18 +122,64 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
       temp$rowID <- data.final$id[i][length(data.final$id[i])]
       exp1 <- expr(Metabolite ~ !!ensym(contrast_var)) #changed from !!ensym to ensym
       if(is.null(subset)){
+        if(paired=TRUE){
+          # Ensure the data is ordered consistently for both groups
+          temp <- temp[order(temp$rowID, temp$subject), ]
+          
+          # Extract the Metabolite values for each group
+          group1 <- temp$Metabolite[temp$Class == levels(as.factor(temp[[contrast_var]]))[1]]
+          group2 <- temp$Metabolite[temp$Class == levels(as.factor(temp[[contrast_var]]))[2]]
+          
+          # Check if both groups have the same length
+          if(length(group1) == length(group2)) {
+            # Run a paired t-test
+            ttest.res <- tidy(t.test(group1, group2, paired = TRUE))
+          } else {
+            stop("The groups do not have the same number of observations for a paired t-test.")
+          }
+          
+          # The result is stored in ttest.res
+          ttest.res$contrast <- paste(levels(as.factor(temp[[contrast_var]]))[1],"-",levels(as.factor(temp[[contrast_var]]))[2])
+        }else {
         ttest.res <- tidy(t.test(formula = eval(exp1), data = temp))
         ttest.res$contrast <- paste(levels(as.factor(temp[[contrast_var]]))[1],"-",levels(as.factor(temp[[contrast_var]]))[2])
+        }
         ttest.res
         }else{
+          if(paired=TRUE){
           #subset=list(list("GI_MB_TBI","GII_MB_Sham"),list("GI_CX_TBI","GII_CX_Sham"))
           ttest.res=list()
           for(n in 1:length(subset)){
-          ttest.res[[n]] <- tidy(t.test(formula = eval(exp1), data = temp %>% filter(Class %in% subset[[n]])))
+           
+            temp <- temp[order(temp$rowID, temp$subject), ]
+            temp <- temp %>% filter(Class %in% subset[[n]])
+            
+            # Extract the Metabolite values for each group
+            group1 <- temp$Metabolite[temp$Class == levels(as.factor(temp[[contrast_var]]))[1]]
+            group2 <- temp$Metabolite[temp$Class == levels(as.factor(temp[[contrast_var]]))[2]]
+            
+            # Check if both groups have the same length
+            if(length(group1) == length(group2)) {
+              # Run a paired t-test
+              ttest.res <- tidy(t.test(group1, group2, paired = TRUE))
+            } else {
+              stop("The groups do not have the same number of observations for a paired t-test.")
+            }
+            
+            
           ttest.res[[n]]$contrast <- paste(subset[[n]][1],"-",subset[[n]][2])
           }
             ttest.res <- do.call("rbind",ttest.res)
             ttest.res$id <- temp$rowID[[1]]
+          } else{
+            ttest.res=list()
+            for(n in 1:length(subset)){
+              ttest.res[[n]] <- tidy(t.test(formula = eval(exp1), data = temp %>% filter(Class %in% subset[[n]])))
+              ttest.res[[n]]$contrast <- paste(subset[[n]][1],"-",subset[[n]][2])
+            }
+            ttest.res <- do.call("rbind",ttest.res)
+            ttest.res$id <- temp$rowID[[1]]
+          }
             ttest.res 
           }
         }
