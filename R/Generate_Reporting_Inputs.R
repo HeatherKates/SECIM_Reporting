@@ -564,5 +564,17 @@ if(exists("Pos_pre_stats_conf_levels")){
 }
   return(Client_Data_Download)
 }
-#save(file=paste(client,".ReportingInput",Sys.Date(),".RDATA",sep=""),Client_Data_Download)
+# List of files to remove
+files_to_remove <- c("complete_norm.qs", "data_orig.qs", "data_prefilter_iqr.csv", 
+                     "data_proc.qs", "prenorm.qs", "preproc.qs", "row_norm.qs")
+
+# Remove specific files
+file.remove(files_to_remove)
+
+# For patterns, use list.files with a pattern and then remove those files
+neg_metab_files <- list.files(pattern = ".* Neg metab\\.in\\.csv$")
+pos_metab_files <- list.files(pattern = ".* Pos metab\\.in\\.csv$")
+
+# Remove files matching patterns
+file.remove(c(neg_metab_files, pos_metab_files))
 
