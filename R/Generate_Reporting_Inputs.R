@@ -33,7 +33,6 @@ library(metid)
 library(MetaboAnalystR)
 
 source("SECIM_Reporting/R/SECIM_Metabolomics.R")
-debug(SECIM_Metabolomics)
 source("SECIM_Reporting/R/Norm_Plots.R")
 source("SECIM_Reporting/R/metid_SECIM-main/R/annotate_metabolites_mass_dataset.R")
 source("SECIM_Reporting/R/metid_SECIM-main/R/mzIdentify_mass_dataset.R")

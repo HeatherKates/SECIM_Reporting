@@ -24,7 +24,9 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   
   dataset[is.na(dataset)] <- 0
   #makes a metadataset frame out of the header rows of dataset
-  md <- data.frame(t(data.frame(dataset[1:num_meta,]))); colnames(md) <- md[1,]; md <- md %>% slice(-1)
+  md <- data.frame(t(data.frame(dataset[1:num_meta,])))
+  colnames(md) <- md[1,]
+  md <- md %>% slice(-1)
   
   if (num_meta==1){
   dataset[dataset==0] <- NA
@@ -116,13 +118,14 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
     ttest=list()
     ttest <- foreach (i = (num_meta+1):nrow(data.final),.packages=c("dplyr","stats"))%do% {
       temp <- data.frame(t(data.final[c(1:(num_meta),i),]))
-      colnames(temp) <- c(temp[1,][1:num_meta],"Metabolite"); temp <- temp[-1,]
+      colnames(temp) <- c(colnames(temp[1,][1:num_meta]),"Metabolite")
+      temp <- temp[-1,]
       temp$Metabolite <- as.numeric(temp$Metabolite)
       #v11 Adds row ID to temp
       temp$rowID <- data.final$id[i][length(data.final$id[i])]
       exp1 <- expr(Metabolite ~ !!ensym(contrast_var)) #changed from !!ensym to ensym
       if(is.null(subset)){
-        if(paired=TRUE){
+        if(paired==TRUE){
           # Ensure the data is ordered consistently for both groups
           temp <- temp[order(temp$rowID, temp$subject), ]
           
@@ -146,7 +149,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
         }
         ttest.res
         }else{
-          if(paired=TRUE){
+          if(paired==TRUE){
           #subset=list(list("GI_MB_TBI","GII_MB_Sham"),list("GI_CX_TBI","GII_CX_Sham"))
           ttest.res=list()
           for(n in 1:length(subset)){
