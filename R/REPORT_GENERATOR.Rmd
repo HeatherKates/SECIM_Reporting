@@ -596,6 +596,23 @@ if(p_type == "log2FC"){
 }
 ```
 
+## Metabolite set enrichment analysis (MSEA) 
+
+**MSEA was performed for the list of significantly changed metabolites using Metaboanalyst R and the KEGG pathway database.**
+
+Name matching between the SECIM library database and the Metaboanalyst R KEGG pathway database is imperfect and some significantly changed compounds may have been ommitted from the MSEA. Only "level 1" identified metabolites are input in the MSEA.
+
+```{r, echo=FALSE, results='hide'}
+capture.output({
+  source("/blue/timgarrett/hkates/SECIM_Reporting/R/MSEA.R")
+}, type = "output")
+```
+
+```{r, echo=FALSE, results='asis'}
+image_path <- paste0("/blue/timgarrett/hkates/SECIM_Reporting/", client, "MSEA.", "pngdpi72.png")
+cat("![MSEA results for significantly changed compounds](", image_path, ")", sep="")
+```
+
 # Visualizations of Changed Metabolites
 
 All plots below can be zoomed, selected, and downloaded individually (and/or as modified) using the toolbar on the top right of the figure (will appear when you hover your mouse). Hover over plot points to view underlying data.
