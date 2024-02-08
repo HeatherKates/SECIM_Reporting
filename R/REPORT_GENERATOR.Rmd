@@ -329,72 +329,6 @@ Following analysis of all compounds detected in positive and negative ionization
 
 Principal component analysis of untargeted metabolomics data. Two-dimensional PCA score plots reveal possible separation in metabolite profiles related to variables of interest. Ellipses are calculated using the R package car (Fox J. and Weisberg S. 2019) and ~1 Std dev.
 
-```{r,eval=FALSE}
-PCA_DATA <- data.frame(cbind(colnames(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata),(num_of_metadata):(num_samples+2)])),
-                       t(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata),(num_of_metadata):(num_samples+2)]),
-                             t(rbind(
-  Client_Data_Download[["Pos.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Pos.normalized.data"]]),3:(num_samples+2)],
-  Client_Data_Download[["Neg.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Neg.normalized.data"]]),3:(num_samples+2)]))
-  )
-
-PCA_DATA[-(num_of_metadata-1)] <- lapply(PCA_DATA[-(num_of_metadata-1)], function(col) {
-  # Try to convert to numeric
-  numeric_col <- suppressWarnings(as.numeric(col))
-  
-  # If there are no NAs after the conversion or the original column was all NAs
-  if (!any(is.na(numeric_col)) || all(is.na(col))) {
-    return(numeric_col)
-  } else {
-    return(col)
-  }
-})
-
-
-# PCA
-pca_res <- prcomp(PCA_DATA[,-c(1:num_of_metadata)], center = TRUE, scale. = TRUE)
-scores <- pca_res$x
-
-
-colors <- RColorBrewer::brewer.pal(num_groups, "Set1")
-
-# Function to plot ellipse and points for each target
-plot_function <- function(target) {
-  target_data <- as.data.frame(scores[PCA_DATA[2] == target, 1:2])
-  target_color <- colors[which(unique(PCA_DATA[[2]]) == target)]
-  
-  # Ellipse
-  ellipse_coords <- car::dataEllipse(target_data$PC1, target_data$PC2, 
-                                     levels = 0.68, # roughly corresponds to 1 std dev
-                                     plot.points = FALSE, add = TRUE, draw = FALSE)
-  
-  fig <<- fig %>% 
-    add_polygons(x = ellipse_coords[,1], y = ellipse_coords[,2],
-                 line = list(color = target_color, dash = "dot"),
-                 fillcolor = target_color, opacity = 0.3,
-                 showlegend = F,
-                 hoverinfo = "skip")  # this tells plotly not to show any hover information for the ellipses
-  
-  text_data <- as.character(rownames(target_data))
-  PC1 <- as.numeric(target_data$PC1)
-  PC2 <- as.numeric(target_data$PC2)
-
-  # Scatter points
-  fig <<- fig %>% 
-    add_trace(data = target_data,
-              x = ~PC1, y = ~PC2, 
-              type = "scatter",
-              mode = "markers",
-              name = target,
-              marker = list(color = target_color),
-              text = ~text_data,
-              hoverinfo = "text")  # this tells plotly to display the text when hovering
-}
-
-fig <- plot_ly()
-lapply(unique(PCA_DATA[[2]]), plot_function)
-fig
-```
-
 ```{r}
 if(num_of_metadata==2){
  PCA_DATA <- data.frame(cbind(colnames(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata-1),(num_of_metadata+1):(num_samples+2)])),
@@ -437,7 +371,7 @@ PCA_DATA[-(num_of_metadata-1)] <- lapply(PCA_DATA[-(num_of_metadata-1)], functio
   }
   
 })
-pca_res <- prcomp(PCA_DATA[-1,-c(1:num_of_metadata)], center = TRUE, scale. = TRUE)
+pca_res <- prcomp(PCA_DATA[,-c(1:num_of_metadata)], center = TRUE, scale. = TRUE)
 }
 
 scores <- pca_res$x
