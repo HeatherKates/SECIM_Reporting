@@ -330,14 +330,14 @@ Following analysis of all compounds detected in positive and negative ionization
 Principal component analysis of untargeted metabolomics data. Two-dimensional PCA score plots reveal possible separation in metabolite profiles related to variables of interest. Ellipses are calculated using the R package car (Fox J. and Weisberg S. 2019) and ~1 Std dev.
 
 ```{r,eval=FALSE}
-PCA_DATA <- data.frame(cbind(colnames(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata-1),(num_of_metadata+1):(num_samples+2)])),
-                       t(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata-1),(num_of_metadata+1):(num_samples+2)]),
+PCA_DATA <- data.frame(cbind(colnames(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata),(num_of_metadata):(num_samples+2)])),
+                       t(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata),(num_of_metadata):(num_samples+2)]),
                              t(rbind(
   Client_Data_Download[["Pos.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Pos.normalized.data"]]),3:(num_samples+2)],
   Client_Data_Download[["Neg.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Neg.normalized.data"]]),3:(num_samples+2)]))
   )
 
-PCA_DATA[-1] <- lapply(PCA_DATA[-1], function(col) {
+PCA_DATA[-(num_of_metadata-1)] <- lapply(PCA_DATA[-(num_of_metadata-1)], function(col) {
   # Try to convert to numeric
   numeric_col <- suppressWarnings(as.numeric(col))
   
@@ -396,6 +396,7 @@ fig
 ```
 
 ```{r}
+#The goal of the PCA_DATA data.frame is to have 
 PCA_DATA <- data.frame(cbind(colnames(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata-1),(num_of_metadata+1):(num_samples+2)])),
                        t(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata-1),(num_of_metadata+1):(num_samples+2)]),
                              t(rbind(
@@ -478,7 +479,7 @@ fig
 
 `r if(test_type=="repeated_measures_anova"){"A repeated-measures ANOVA was performed using the R package stats (R Core Team 2023) to determine whether there was a significant effect of variable Class on metabolite peak intensity. The anova formula was Metabolite~Class+Error(ID) and post-hoc pairwise comparisons were performed using Estimated Marginal Means (aka Least-Squares Means) as implemented in the R package emmeans (R.V. Lenth 2023). Adjusted p-values are adjusted for multiple pairwise comparison testing, not testing of multiple metabolites."}`
 
-`r if(test_type=="t.test"){"For each compound, a t-test was performed using the R package stats (R Core Team 2023) to test the null hypothesis that the mean intensity for group one = the mean intensity for group two. Adjusted p-values are corrected using the FDR method of p-value correction. If fewer than ten significantly changed metabolites were identified based on adjusted p-values, uncorrected p-values are reported."}`
+`r if(test_type=="t.test"){if(paired==TRUE){"For each compound, a paired t-test was performed using the R package stats (R Core Team 2023) to test the null hypothesis that the mean intensity for group one (e.g. before) = the mean intensity for group two (e.g. after). Adjusted p-values are corrected using the FDR method of p-value correction. If fewer than ten significantly changed metabolites were identified based on adjusted p-values, uncorrected p-values are reported."} else {"For each compound, a t-test was performed using the R package stats (R Core Team 2023) to test the null hypothesis that the mean intensity for group one = the mean intensity for group two. Adjusted p-values are corrected using the FDR method of p-value correction. If fewer than ten significantly changed metabolites were identified based on adjusted p-values, uncorrected p-values are reported."}`
 
 `r if(test_type=="nostats"){"For each compound, no statistical analysis was performed. Instead, a fold-change analysis was performed"}`
 
