@@ -87,6 +87,8 @@ generate_network <- function(i, mydata,dir,dir_word) {
   mydata[[paste("vs.names.KEGG",dir,".")]][[i]]$V2 <- gsub(";", "\n", mydata[[paste("vs.names.KEGG",dir,".")]][[i]]$V2 )
   
   #Creates the nodes (plots the points)
+  mydata[[paste("node.data",dir,sep=".")]][[i]]$size <- ifelse(mydata[[paste("node.data",dir,sep=".")]][["element1"]]$input == "Input", 10, 5)
+
   network <- plot_ly(evaluate=TRUE)
   network <- add_trace(network,x = ~mydata[[paste("Xn",dir,sep=".")]][[i]], y = ~mydata[[paste("Yn",dir,sep=".")]][[i]], #Node points
                        mode = "markers", 
@@ -96,7 +98,9 @@ generate_network <- function(i, mydata,dir,dir_word) {
                        color = as.factor(mydata[[paste("node.data",dir,sep=".")]][[i]]$com),
                        colors = c(brewer.pal(5,"Dark2"), "red"),
                        symbol = ~mydata[[paste("node.data",dir,sep=".")]][[i]]$input,
-                       symbols = c("circle","square"))
+                       symbols = c("circle","square"),#size=10)
+                      size = ~mydata[[paste("node.data",dir,sep=".")]][[i]]$size)
+                      
   #Adds names to the nodes
   network <- network %>% add_text(x = ~mydata[[paste("Xn",dir,sep=".")]][[i]], y = ~mydata[[paste("Yn",dir,sep=".")]][[i]], text = mydata[[paste("vs.names.KEGG",dir,".")]][[i]]$vs.name,evaluate=TRUE)
   
