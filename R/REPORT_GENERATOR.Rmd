@@ -88,7 +88,7 @@ if (test_type =="t.test"){
   if(nrow(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05)) > 10){
     p_type="adj.p.value"} else {
       p_type="p.value"}
-  sig_knowns <- nrow(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05) %>% filter(Level==1)) 
+  sig_knowns <- nrow(Client_Data_Download[["report_results"]] %>% filter(!!sym(p_type)<0.05) %>% filter(Level==1)) 
 }
 if (test_type=="nostats"){
   p_type="log2FC"
@@ -396,14 +396,13 @@ fig
 ```
 
 ```{r}
-#The goal of the PCA_DATA data.frame is to have 
-PCA_DATA <- data.frame(cbind(colnames(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata-1),(num_of_metadata+1):(num_samples+2)])),
+if(num_of_metadata==2){
+ PCA_DATA <- data.frame(cbind(colnames(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata-1),(num_of_metadata+1):(num_samples+2)])),
                        t(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata-1),(num_of_metadata+1):(num_samples+2)]),
                              t(rbind(
   Client_Data_Download[["Pos.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Pos.normalized.data"]]),3:(num_samples+2)],
   Client_Data_Download[["Neg.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Neg.normalized.data"]]),3:(num_samples+2)]))
   )
-
 PCA_DATA[-1] <- lapply(PCA_DATA[-1], function(col) {
   # Try to convert to numeric
   numeric_col <- suppressWarnings(as.numeric(col))
@@ -415,10 +414,32 @@ PCA_DATA[-1] <- lapply(PCA_DATA[-1], function(col) {
     return(col)
   }
 })
-
-
 # PCA
 pca_res <- prcomp(PCA_DATA[,-c(1:num_of_metadata)], center = TRUE, scale. = TRUE)
+
+}else if (num_of_metadata>2){
+PCA_DATA <- data.frame(cbind(colnames(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata),(num_of_metadata):(num_samples+2)])),
+                       t(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata),(num_of_metadata):(num_samples+2)]),
+                             t(rbind(
+  Client_Data_Download[["Pos.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Pos.normalized.data"]]),(num_of_metadata+1):(num_samples+num_of_metadata)],
+  Client_Data_Download[["Neg.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Neg.normalized.data"]]),(num_of_metadata+1):(num_samples+num_of_metadata)]))
+  )
+#PCA_DATA[-1] <- lapply(PCA_DATA[-1], function(col) { #This was for >2 metadata
+PCA_DATA[-(num_of_metadata-1)] <- lapply(PCA_DATA[-(num_of_metadata-1)], function(col) {
+  # Try to convert to numeric
+  numeric_col <- suppressWarnings(as.numeric(col))
+  
+  # If there are no NAs after the conversion or the original column was all NAs
+  if (!any(is.na(numeric_col)) || all(is.na(col))) {
+    return(numeric_col)
+  } else {
+    return(col)
+  }
+  
+})
+pca_res <- prcomp(PCA_DATA[-1,-c(1:num_of_metadata)], center = TRUE, scale. = TRUE)
+}
+
 scores <- pca_res$x
 
 
@@ -479,7 +500,16 @@ fig
 
 `r if(test_type=="repeated_measures_anova"){"A repeated-measures ANOVA was performed using the R package stats (R Core Team 2023) to determine whether there was a significant effect of variable Class on metabolite peak intensity. The anova formula was Metabolite~Class+Error(ID) and post-hoc pairwise comparisons were performed using Estimated Marginal Means (aka Least-Squares Means) as implemented in the R package emmeans (R.V. Lenth 2023). Adjusted p-values are adjusted for multiple pairwise comparison testing, not testing of multiple metabolites."}`
 
-`r if(test_type=="t.test"){if(paired==TRUE){"For each compound, a paired t-test was performed using the R package stats (R Core Team 2023) to test the null hypothesis that the mean intensity for group one (e.g. before) = the mean intensity for group two (e.g. after). Adjusted p-values are corrected using the FDR method of p-value correction. If fewer than ten significantly changed metabolites were identified based on adjusted p-values, uncorrected p-values are reported."} else {"For each compound, a t-test was performed using the R package stats (R Core Team 2023) to test the null hypothesis that the mean intensity for group one = the mean intensity for group two. Adjusted p-values are corrected using the FDR method of p-value correction. If fewer than ten significantly changed metabolites were identified based on adjusted p-values, uncorrected p-values are reported."}`
+`r if(test_type == "t.test") {
+  if(paired == TRUE) {
+    paste0("For each compound, a paired t-test was performed using the R package stats (R Core Team 2023) to test the null hypothesis that the mean intensity for group one (e.g. before) = the mean intensity for group two (e.g. after). Adjusted p-values are corrected using the FDR method of p-value correction. If fewer than ten significantly changed metabolites were identified based on adjusted p-values, uncorrected p-values are reported.",
+    "<strong>If fewer than ten significantly changed metabolites were identified based on adjusted p-values, uncorrected p-values are reported.</strong>")
+  } else {
+    paste0("For each compound, a t-test was performed using the R package stats (R Core Team 2023) to test the null hypothesis that the mean intensity for group one = the mean intensity for group two. Adjusted p-values are corrected using the FDR method of p-value correction. ", 
+    "<strong>If fewer than ten significantly changed metabolites were identified based on adjusted p-values, uncorrected p-values are reported.</strong>")
+  }
+}`
+
 
 `r if(test_type=="nostats"){"For each compound, no statistical analysis was performed. Instead, a fold-change analysis was performed"}`
 
@@ -773,7 +803,7 @@ fig <- fig %>% layout(title = paste("Significant changes by metabolite class\n("
          xaxis = list(title = ""),
          #It would be better to set the range to min,max across all contrasts,
          #But that information is not available when each plot is drawn.
-         yaxis = list(title = "",tick0=0, dtick=1,range = list(-max(data.frame(barplotminmax.vector)),max(data.frame(barplotminmax.vector)))),margin = list(l = 75, t = 150),width=900,height=700)
+         yaxis = list(title = "",tick0=0, dtick=1,range = list(-max(data.frame(barplotminmax.vector)),max(data.frame(barplotminmax.vector)))),margin = list(l = 75, t = 150),width=900,height=500)
 barplotlist[[i]] = ggplotly(fig) 
 } else
 {
@@ -891,7 +921,8 @@ fig <- fig %>% layout(title = paste("Significant changes by metabolite class\n("
          xaxis = list(title = ""),
          #It would be better to set the range to min,max across all contrasts,
          #But that information is not available when each plot is drawn.
-         yaxis = list(title = "",tick0=0, dtick=1,range = list(-max(data.frame(barplotminmax.vector)),max(data.frame(barplotminmax.vector)))),margin = list(l = 75, t = 150),width=900,height=700)
+         yaxis = list(title = "",tick0=0, dtick=1,range = list(-max(data.frame(barplotminmax.vector)),max(data.frame(barplotminmax.vector)))),margin = list(l = 75, t = 150))
+fig %>% layout(title="TEST")
 barplotlist[[i]] = ggplotly(fig) 
 } else
 {
@@ -986,8 +1017,10 @@ if(p_type=="adj.p.value"){
   arrange(Level,adj.p.value)  %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
 }
 if(p_type=="p.value"){
-  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
-  Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(p.value) %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
+  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% mutate(Level = factor(Level, levels = c("1", "3", ""), ordered = TRUE)) %>%
+  arrange(Level,p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
+  Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]])  %>% mutate(Level = factor(Level, levels = c("1", "3", ""), ordered = TRUE)) %>%
+  arrange(Level,p.value)  %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
 }
 if(p_type=="log2FC"){
   top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(desc(log2FC)) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
@@ -1185,8 +1218,10 @@ if(p_type=="adj.p.value"){
   arrange(Level,adj.p.value)  %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
 }
 if(p_type=="p.value"){
-  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast == contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
-  Client_Data_Download[["report_results"]] %>% filter(contrast == contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(p.value) %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
+  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% mutate(Level = factor(Level, levels = c("1", "3", ""), ordered = TRUE)) %>%
+  arrange(Level,p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
+  Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]])  %>% mutate(Level = factor(Level, levels = c("1", "3", ""), ordered = TRUE)) %>%
+  arrange(Level,p.value)  %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
 }
 if(p_type=="log2FC"){
   top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast == contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(desc(log2FC)) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),

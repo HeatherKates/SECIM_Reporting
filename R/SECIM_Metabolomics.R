@@ -118,7 +118,11 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
     ttest=list()
     ttest <- foreach (i = (num_meta+1):nrow(data.final),.packages=c("dplyr","stats"))%do% {
       temp <- data.frame(t(data.final[c(1:(num_meta),i),]))
+      if(num_meta==1){
+        colnames(temp) <- c(contrast_var,"Metabolite")
+      }else{
       colnames(temp) <- c(colnames(temp[1,][1:num_meta]),"Metabolite")
+      }
       temp <- temp[-1,]
       temp$Metabolite <- as.numeric(temp$Metabolite)
       #v11 Adds row ID to temp
