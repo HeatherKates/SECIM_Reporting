@@ -1,6 +1,5 @@
 CalculateHyperScore <- function(mSetObj=NA){
-  
-  mSetObj <- .get.mSet(mSetObj);
+  mSetObj <- mSetTest
   
   # make a clean dataSet$cmpd data based on name mapping
   # only valid hmdb name will be used
@@ -22,8 +21,12 @@ CalculateHyperScore <- function(mSetObj=NA){
   }
   
   # move to api only if R package + KEGG msets
-  if(grepl("kegg", mSetObj$analSet$msetlibname)){
+  if(!.on.public.web & grepl("kegg", mSetObj$analSet$msetlibname)){
     
+    # make this lazy load
+    #if(!exists("my.hyperscore.kegg")){ # public web on same user dir
+      source("/blue/timgarrett/hkates/SECIM_Reporting/R/util_api.R");    
+    #}
     
     mSetObj$api$oraVec <- ora.vec; 
     
@@ -37,7 +40,7 @@ CalculateHyperScore <- function(mSetObj=NA){
                      filter = mSetObj$api$filter, oraVec = mSetObj$api$oraVec, excludeNum = mSetObj$api$excludeNum)
     }
     saveRDS(toSend, "tosend.rds")
-    #return(my.hyperscore.kegg());
+    return(my.hyperscore.kegg());
   }
   
   current.mset <- current.msetlib$member;

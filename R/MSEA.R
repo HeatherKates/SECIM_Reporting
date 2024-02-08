@@ -1,15 +1,17 @@
 library(MetaboAnalystR)
 source("/blue/timgarrett/hkates/SECIM_Reporting/R/calculatehyperscore.R")
 source("/blue/timgarrett/hkates/SECIM_Reporting/R/general_data_utils.R")
+source("/blue/timgarrett/hkates/SECIM_Reporting/R/setcurrentmsetlib.R")
+.on.public.web=FALSE
 
 ## When input is a list
 
 # Create vector consisting of compounds for enrichment analysis 
 rm(mSet)
 my.vec <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(!!sym(p_type)<0.05) %>% filter(Level==1) %>% dplyr::select(compound) %>% unlist()
-
+#my.vec <- readRDS("test_my_vec.RDATA")
 # Create mSetObj
-mSet<-InitDataObjects("conc", "msetora", FALSE)
+mSet<-InitDataObjects("list", "msetora", FALSE)
 ## [1] "MetaboAnalyst R objects initialized ..."
 #Set up mSetObj with the list of compounds
 mSet<-Setup.MapData(mSet, my.vec);
@@ -17,7 +19,6 @@ mSet<-Setup.MapData(mSet, my.vec);
 # Cross reference list of compounds against libraries (hmdb, pubchem, chebi, kegg, metlin)
 mSet<-CrossReferencing(mSet, "name");
 # Example compound name map
-mSet$name.map 
 # Create the mapping results table
 mSet<-CreateMappingResultTable(mSet)
 
@@ -26,9 +27,9 @@ mSet<-SetMetabolomeFilter(mSet, F);
 
 # Select metabolite set library, refer to 
 mSet<-SetCurrentMsetLib(mSet, "kegg_pathway", 0)
-
+mSetTest <- mSet
 # Calculate hypergeometric score, results table generated in your working directory
-mSet<-CalculateHyperScore(mSet)
+mSet<-CalculateHyperScore(mSetTest)
 ## [1] "Loaded files from MetaboAnalyst web-server."
 # Plot the ORA, bar-graph
 mSet<-PlotORA(mSet, paste0("/blue/timgarrett/hkates/SECIM_Reporting/",client,"MSEA.", "png"), 300, width=NA)
