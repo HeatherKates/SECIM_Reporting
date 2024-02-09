@@ -165,7 +165,7 @@ if (length(samples_to_drop)>0){
 problematic_samples <- c()  #samples not in peakdata
 name_mapping <- sapply(metadata$Sample.Name, function(sample_name) {
   # Find the column name that matches the sample name
-  if (grep("Gomez",client)==1){
+  if (grepl("Gomez",client)==1){
     matched_colname <- grep(paste0("^[0-9]+","_", sample_name, "_"), colnames(peakdata), value = TRUE) #just for Gomez's weird names
   }
   else if (any(grepl("\\[", colnames(peakdata)))) { #change else if to if when Gomez is done
@@ -352,7 +352,7 @@ if (length(samples_to_drop)>0){
 problematic_samples <- c()  #samples not in peakdata
 name_mapping <- sapply(metadata$Sample.Name, function(sample_name) {
   # Find the column name that matches the sample name
-if (grep("Gomez",client)==1){
+if (grepl("Gomez",client)==1){
   matched_colname <- grep(paste0("^[0-9]+","_", sample_name, "_"), colnames(peakdata), value = TRUE) #temporary for Gomez's weird sample names
 } else if (any(grepl("\\[", colnames(peakdata)))) {
     matched_colname <- grep(paste0("\\[", sample_name, "\\]"), colnames(peakdata), value = TRUE)
