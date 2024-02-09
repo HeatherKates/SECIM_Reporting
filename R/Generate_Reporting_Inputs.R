@@ -165,7 +165,10 @@ if (length(samples_to_drop)>0){
 problematic_samples <- c()  #samples not in peakdata
 name_mapping <- sapply(metadata$Sample.Name, function(sample_name) {
   # Find the column name that matches the sample name
-  if (any(grepl("\\[", colnames(peakdata)))) {
+  if (grep("Gomez",client)==1){
+    matched_colname <- grep(paste0("^[0-9]+","_", sample_name, "_"), colnames(peakdata), value = TRUE) #just for Gomez's weird names
+  }
+  else if (any(grepl("\\[", colnames(peakdata)))) { #change else if to if when Gomez is done
     matched_colname <- grep(paste0("\\[", sample_name, "\\]"), colnames(peakdata), value = TRUE)
   } else if(any(grepl("^[0-9]+_", metadata$Sample.Name))){ #If the sample names start with a number, look for the colnames to start with the sample name (bc it already includes num)
     matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE)
@@ -349,13 +352,14 @@ if (length(samples_to_drop)>0){
 problematic_samples <- c()  #samples not in peakdata
 name_mapping <- sapply(metadata$Sample.Name, function(sample_name) {
   # Find the column name that matches the sample name
-  #matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE)
-  if (any(grepl("\\[", colnames(peakdata)))) {
+if (grep("Gomez",client)==1){
+  matched_colname <- grep(paste0("^[0-9]+","_", sample_name, "_"), colnames(peakdata), value = TRUE) #temporary for Gomez's weird sample names
+} else if (any(grepl("\\[", colnames(peakdata)))) {
     matched_colname <- grep(paste0("\\[", sample_name, "\\]"), colnames(peakdata), value = TRUE)
   } else if(any(grepl("^[0-9]+_", metadata$Sample.Name))){ 
     matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE)
   } else {
-    matched_colname <- grep(paste0("^[0-9]+","_", sample_name, "_"), colnames(peakdata), value = TRUE)
+    matched_colname <- grep(paste0("^[0-9]+","_", sample_name, "_"), colnames(peakdata), value = TRUE) #temporary for Gomez's weird sample names
     #matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE) #temporary for Dudeja
     }
   if (length(matched_colname) == 1) {
