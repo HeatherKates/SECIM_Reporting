@@ -9,6 +9,12 @@ source("/blue/timgarrett/hkates/SECIM_Reporting/R/setcurrentmsetlib.R")
 # Create vector consisting of compounds for enrichment analysis 
 rm(mSet)
 my.vec <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(!!sym(p_type)<0.05) %>% filter(Level==1) %>% dplyr::select(compound) %>% unlist()
+# Remove anything after "+" and anything within "()"
+my.vec <-  gsub("\\+.*", "", my.vec)
+my.vec <- gsub("\\(.*?\\)", "", my.vec)
+
+
+
 #my.vec <- readRDS("test_my_vec.RDATA")
 # Create mSetObj
 mSet<-InitDataObjects("list", "msetora", FALSE)
