@@ -331,13 +331,16 @@ Principal component analysis of untargeted metabolomics data. Two-dimensional PC
 
 ```{r}
 if(num_of_metadata==2){
- PCA_DATA <- data.frame(cbind(colnames(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata-1),(num_of_metadata+1):(num_samples+2)])),
+  #We want to remove the metadata row(s) and all non sample cols from Client_Data_Download
+ PCA_DATA <- data.frame(cbind(
+   colnames(Client_Data_Download[["Pos.normalized.data"]][-num_of_metadata,] %>% select(Client_Data_Download_out[["metadata"]]$Sample.name)),
+   
                        t(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata-1),(num_of_metadata+1):(num_samples+2)]),
                              t(rbind(
-  Client_Data_Download[["Pos.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Pos.normalized.data"]]),3:(num_samples+2)],
-  Client_Data_Download[["Neg.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Neg.normalized.data"]]),3:(num_samples+2)]))
-  )
-PCA_DATA[-1] <- lapply(PCA_DATA[-1], function(col) {
+  Client_Data_Download[["Pos.normalized.data"]][-c(1:num_of_metadata),] %>% select(Client_Data_Download_out[["metadata"]]$Sample.name),
+  Client_Data_Download[["Neg.normalized.data"]][-c(1:num_of_metadata),] %>% select(Client_Data_Download_out[["metadata"]]$Sample.name)))))
+ 
+PCA_DATA[-c(1:num_of_metadata)] <- lapply(PCA_DATA[-c(1:num_of_metadata)], function(col) {
   # Try to convert to numeric
   numeric_col <- suppressWarnings(as.numeric(col))
   
@@ -566,33 +569,38 @@ htmltools::HTML(html_text)
 
 ```{r,warn=FALSE}
 if(p_type == "p.value"){
-  datatable(Client_Data_Download[["report_results"]] %>%
+  dt <- datatable(Client_Data_Download[["report_results"]] %>%
               filter(p.value < 0.05) %>%
               dplyr::select(c(compound, p.value, Level, contrast, contains("FC"))) %>%
               mutate(Level = factor(Level, levels = c("1", "3", "")), 
                      across(where(is.numeric), round, 5)) %>%
               arrange(Level, p.value), 
             caption = 'Table of significantly changed metabolites for (p-value < 0.05)')
+    dt %>% formatRound(columns = c("p.value", "FC", "log2FC"), digits = 4)
+
 }
 
 if(p_type == "adj.p.value"){
-  datatable(Client_Data_Download[["report_results"]] %>%
+  dt <- datatable(Client_Data_Download[["report_results"]] %>%
               filter(adj.p.value < 0.05) %>%
               dplyr::select(c(compound, adj.p.value, Level, contrast, contains("FC"))) %>%
               mutate(Level = factor(Level, levels = c("1", "3", "")), 
                      across(where(is.numeric), round, 5)) %>%
               arrange(Level, adj.p.value), 
             caption = 'Table of significantly changed metabolites for (adjusted p-value < 0.05)')
+  dt %>% formatRound(columns = c("adj.p.value", "FC", "log2FC"), digits = 4)
 }
 
 if(p_type == "log2FC"){
-  datatable(Client_Data_Download[["report_results"]] %>%
+  dt <- datatable(Client_Data_Download[["report_results"]] %>%
               filter(abs(log2FC) > 1.5) %>%
               dplyr::select(c(compound, Level, contrast, contains("FC"))) %>%
               mutate(Level = factor(Level, levels = c("1", "3", "")), 
                      across(where(is.numeric), round, 5)) %>%
               arrange(Level, log2FC), 
             caption = 'Table of changed metabolites (log2FC > 1.5)')
+    dt %>% formatRound(columns = c("FC", "log2FC"), digits = 4)
+
 }
 ```
 
@@ -602,15 +610,35 @@ if(p_type == "log2FC"){
 
 Name matching between the SECIM library database and the Metaboanalyst R KEGG pathway database is imperfect and some significantly changed compounds may have been ommitted from the MSEA. Only "level 1" identified metabolites are input in the MSEA.
 
-```{r, echo=FALSE, results='hide'}
-capture.output({
-  source("/blue/timgarrett/hkates/SECIM_Reporting/R/MSEA.R")
-}, type = "output")
+```{r, echo=FALSE, results='asis'}
+result <- tryCatch({
+  capture.output({
+    source("/blue/timgarrett/hkates/SECIM_Reporting/R/MSEA.R")
+  }, type = "output")
+  NULL  # Successfully executed, no special message to print
+}, error = function(e) {
+  "No overlap between significantly enriched compound IDs and KEGG database"  # Custom error message
+})
+
+if (!is.null(result)) {
+  cat(result)
+}
 ```
 
 ```{r, echo=FALSE, results='asis'}
-image_path <- paste0("/blue/timgarrett/hkates/SECIM_Reporting/", client, "MSEA.", "pngdpi72.png")
-cat("![MSEA results for significantly changed compounds](", image_path, ")", sep="")
+tryCatch({
+  image_path <- paste0("/blue/timgarrett/hkates/SECIM_Reporting/", client, "MSEA.", "pngdpi72.png")
+  
+  # Attempt to verify if the file exists before trying to display it
+  if (!file.exists(image_path)) {
+    stop("Image file does not exist.")
+  }
+  
+  cat("![MSEA results for significantly changed compounds](", image_path, ")", sep="")
+}, error = function(e) {
+  # Print a custom message or handle the error differently
+  cat("No overlap between significantly enriched compound IDs and KEGG database or image could not be displayed.")
+})
 ```
 
 # Visualizations of Changed Metabolites
