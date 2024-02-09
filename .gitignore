@@ -7,4 +7,11 @@
 *runfile.R
 RunFiles/
 Reports/
-ClientInput
+ClientInput/
+*png
+rserver/
+rstudio-rsession/
+*log
+*error
+*sqlite
+*sbatch
