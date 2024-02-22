@@ -523,5 +523,18 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   }
   return(outputs_list)
 }
-#pos.output <- outputs_list
-#saveRDS(object = pos.output,file="Sumners.posoutput.5182023.Rdata")
+# List of files to remove
+files_to_remove <- c("/blue/timgarrett/hkates/complete_norm.qs", "/blue/timgarrett/hkates/data_orig.qs",
+                     "/blue/timgarrett/hkates/data_prefilter_iqr.csv", 
+                     "/blue/timgarrett/hkates/data_proc.qs", "/blue/timgarrett/hkates/prenorm.qs",
+                     "/blue/timgarrett/hkates/preproc.qs", "/blue/timgarrett/hkates/row_norm.qs")
+
+# Remove specific files
+file.remove(files_to_remove)
+
+# For patterns, use list.files with a pattern and then remove those files
+neg_metab_files <- list.files(pattern = "/blue/timgarrett/hkates/.* Neg metab\\.in\\.csv$")
+pos_metab_files <- list.files(pattern = "/blue/timgarrett/hkates/.* Pos metab\\.in\\.csv$")
+
+# Remove files matching patterns
+file.remove(c(neg_metab_files, pos_metab_files))
