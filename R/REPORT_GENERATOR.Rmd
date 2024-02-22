@@ -330,52 +330,16 @@ Following analysis of all compounds detected in positive and negative ionization
 Principal component analysis of untargeted metabolomics data. Two-dimensional PCA score plots reveal possible separation in metabolite profiles related to variables of interest. Ellipses are calculated using the R package car (Fox J. and Weisberg S. 2019) and ~1 Std dev.
 
 ```{r}
-if(num_of_metadata==2){
-  #We want to remove the metadata row(s) and all non sample cols from Client_Data_Download
- PCA_DATA <- data.frame(cbind(
-   colnames(Client_Data_Download[["Pos.normalized.data"]][-num_of_metadata,] %>% select(Client_Data_Download_out[["metadata"]]$Sample.name)),
-   
-                       t(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata-1),(num_of_metadata+1):(num_samples+2)]),
-                             t(rbind(
-  Client_Data_Download[["Pos.normalized.data"]][-c(1:num_of_metadata),] %>% select(Client_Data_Download_out[["metadata"]]$Sample.name),
-  Client_Data_Download[["Neg.normalized.data"]][-c(1:num_of_metadata),] %>% select(Client_Data_Download_out[["metadata"]]$Sample.name)))))
- 
-PCA_DATA[-c(1:num_of_metadata)] <- lapply(PCA_DATA[-c(1:num_of_metadata)], function(col) {
-  # Try to convert to numeric
-  numeric_col <- suppressWarnings(as.numeric(col))
-  
-  # If there are no NAs after the conversion or the original column was all NAs
-  if (!any(is.na(numeric_col)) || all(is.na(col))) {
-    return(numeric_col)
-  } else {
-    return(col)
-  }
-})
-# PCA
-pca_res <- prcomp(PCA_DATA[,-c(1:num_of_metadata)], center = TRUE, scale. = TRUE)
+#We want to remove the metadata row(s) and all non sample cols from Client_Data_Download
+ PCA_DATA <- t(rbind(Client_Data_Download_out[["Neg.normalized.data"]][,3:(num_samples+2)],
+ Client_Data_Download_out[["Pos.normalized.data"]][-(1:num_of_metadata-1),3:(num_samples+2)]))
 
-}else if (num_of_metadata>2){
-PCA_DATA <- data.frame(cbind(colnames(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata),(num_of_metadata):(num_samples+2)])),
-                       t(Client_Data_Download[["Pos.normalized.data"]][1:(num_of_metadata),(num_of_metadata):(num_samples+2)]),
-                             t(rbind(
-  Client_Data_Download[["Pos.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Pos.normalized.data"]]),(num_of_metadata+1):(num_samples+num_of_metadata)],
-  Client_Data_Download[["Neg.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Neg.normalized.data"]]),(num_of_metadata+1):(num_samples+num_of_metadata)]))
-  )
-#PCA_DATA[-1] <- lapply(PCA_DATA[-1], function(col) { #This was for >2 metadata
-PCA_DATA[-(num_of_metadata-1)] <- lapply(PCA_DATA[-(num_of_metadata-1)], function(col) {
-  # Try to convert to numeric
-  numeric_col <- suppressWarnings(as.numeric(col))
-  
-  # If there are no NAs after the conversion or the original column was all NAs
-  if (!any(is.na(numeric_col)) || all(is.na(col))) {
-    return(numeric_col)
-  } else {
-    return(col)
-  }
-  
-})
-pca_res <- prcomp(PCA_DATA[,-c(1:num_of_metadata)], center = TRUE, scale. = TRUE)
-}
+numsonly <- data.frame(PCA_DATA[,-c(1:num_of_metadata-1)])
+#Make numeric
+
+numsonly <- data.frame(lapply(numsonly,as.numeric))
+pca_res <- prcomp(numsonly, center = TRUE, scale. = FALSE,rank. = 2) #The old version used the defaults
+
 
 scores <- pca_res$x
 
@@ -383,8 +347,8 @@ scores <- pca_res$x
 colors <- RColorBrewer::brewer.pal(num_groups, "Set1")
 # Function to plot ellipse for each target
 plot_ellipse_function <- function(target) {
-  target_data <- as.data.frame(scores[PCA_DATA[2] == target, 1:2])
-  target_color <- colors[which(unique(PCA_DATA[[2]]) == target)]
+  target_data <- as.data.frame(scores[PCA_DATA[,1] == target, 1:2])
+  target_color <- colors[which(unique(PCA_DATA[,1]) == target)]
   
   # Ellipse
   ellipse_coords <- car::dataEllipse(target_data$PC1, target_data$PC2, 
@@ -401,8 +365,8 @@ plot_ellipse_function <- function(target) {
 
 # Function to plot points for each target
 plot_points_function <- function(target) {
-  target_data <- as.data.frame(scores[PCA_DATA[2] == target, 1:2])
-  target_color <- colors[which(unique(PCA_DATA[[2]]) == target)]
+  target_data <- as.data.frame(scores[PCA_DATA[,1] == target, 1:2])
+  target_color <- colors[which(unique(PCA_DATA[,1]) == target)]
   
   text_data <- as.character(rownames(target_data))
   PC1 <- as.numeric(target_data$PC1)
@@ -423,10 +387,10 @@ plot_points_function <- function(target) {
 fig <- plot_ly()
 
 # First loop: Plot all ellipses
-invisible(lapply(unique(PCA_DATA[[2]]), plot_ellipse_function))
+invisible(lapply(unique(PCA_DATA[,1]), plot_ellipse_function))
 
 # Second loop: Plot all points
-invisible(lapply(unique(PCA_DATA[[2]]), plot_points_function))
+invisible(lapply(unique(PCA_DATA[,1]), plot_points_function))
 
 fig
 ```
