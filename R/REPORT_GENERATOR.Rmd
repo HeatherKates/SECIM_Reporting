@@ -366,6 +366,7 @@ plot_ellipse_function <- function(target) {
 # Function to plot points for each target
 plot_points_function <- function(target) {
   target_data <- as.data.frame(scores[PCA_DATA[,1] == target, 1:2])
+  rownames(target_data) <- rownames(PCA_DATA)[PCA_DATA[,1]==target]
   target_color <- colors[which(unique(PCA_DATA[,1]) == target)]
   
   text_data <- as.character(rownames(target_data))
@@ -983,6 +984,9 @@ normalized_int <- filter(normalized_int, rownames(normalized_int) %in% top20_sig
 #The boxplot data frame is samples in rows metabs in cols, the normalized intensities for each sample preceded by the name and any metadata for that sample
 my.df <- t(normalized_int)
 
+#Truncate overly long colnames
+colnames(my.df) <- substr(colnames(my.df), 1, 40)
+
 #Add empty data columns to df if < 20 metabolites were significantly changed for a contrast
 if(ncol(my.df)<20){
   add <- 20-ncol(my.df)
@@ -1198,6 +1202,8 @@ colnames(normalized_int) <- normalized_int[1,]
 normalized_int <- normalized_int[-1,]
 normalized_int <- normalized_int %>% filter(!row.names(normalized_int) %in% colnames(Client_Data_Download[["metadata"]]))
 normalized_int <- mutate_all(normalized_int, function(x) as.numeric(as.character(x)))
+#
+rownames(normalized_int) <- substr(rownames(normalized_int), 1, 40)
 
 if(nrow(normalized_int)>1){
   if(test_type=="nostats"){
