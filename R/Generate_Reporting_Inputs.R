@@ -569,15 +569,17 @@ if(exists("Pos_pre_stats_conf_levels")){
   return(Client_Data_Download)
 }
 # List of files to remove
-files_to_remove <- c("complete_norm.qs", "data_orig.qs", "data_prefilter_iqr.csv", 
-                     "data_proc.qs", "prenorm.qs", "preproc.qs", "row_norm.qs")
+files_to_remove <- c("/blue/timgarrett/hkates/complete_norm.qs", "/blue/timgarrett/hkates/data_orig.qs",
+                     "/blue/timgarrett/hkates/data_prefilter_iqr.csv", 
+                     "/blue/timgarrett/hkates/data_proc.qs", "/blue/timgarrett/hkates/prenorm.qs",
+                     "/blue/timgarrett/hkates/preproc.qs", "/blue/timgarrett/hkates/row_norm.qs")
 
 # Remove specific files
 file.remove(files_to_remove)
 
 # For patterns, use list.files with a pattern and then remove those files
-neg_metab_files <- list.files(pattern = ".* Neg metab\\.in\\.csv$")
-pos_metab_files <- list.files(pattern = ".* Pos metab\\.in\\.csv$")
+neg_metab_files <- list.files(pattern = "/blue/timgarrett/hkates/.* Neg metab\\.in\\.csv$")
+pos_metab_files <- list.files(pattern = "/blue/timgarrett/hkates/.* Pos metab\\.in\\.csv$")
 
 # Remove files matching patterns
 file.remove(c(neg_metab_files, pos_metab_files))
