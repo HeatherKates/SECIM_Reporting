@@ -36,6 +36,7 @@ source("SECIM_Reporting/R/SECIM_Metabolomics.R")
 source("SECIM_Reporting/R/Norm_Plots.R")
 source("SECIM_Reporting/R/metid_SECIM-main/R/annotate_metabolites_mass_dataset.R")
 source("SECIM_Reporting/R/metid_SECIM-main/R/mzIdentify_mass_dataset.R")
+source("SECIM_Reporting/R/metid_SECIM-main/R/convert_mzmine2mass_dataset.R")
 source("SECIM_Reporting/R/SanityCheck.HRK.R")
 
 ##Mode Neg
@@ -44,7 +45,7 @@ source("SECIM_Reporting/R/SanityCheck.HRK.R")
 #No special characters in names or metadata except for "_" and ".". 
 #Names of samples are in columns in the peaktable and the string before the "p" or "n" must match the sample names in the metadata 
 metadata <- read_excel(Input,sheet="Sample.data")
-peakdata <- read_excel(Input,sheet="Peaktable.neg",colnames=FALSE)
+peakdata <- read_excel(Input,sheet="Peaktable.neg",col_names=F)
 # Get the first row to use as column names
 header_row <- as.character(peakdata[1, ])
 
@@ -184,13 +185,10 @@ if (length(samples_to_drop)>0){
 problematic_samples <- c()  #samples not in peakdata
 name_mapping <- sapply(metadata$Sample.Name, function(sample_name) {
   # Find the column name that matches the sample name
-  if (grepl("Gomez",client)==1){
-    matched_colname <- grep(paste0("^[0-9]+","_", sample_name, "_"), colnames(peakdata), value = TRUE) #just for Gomez's weird names
-  }
-  else if (any(grepl("\\[", colnames(peakdata)))) { #change else if to if when Gomez is done
+  if (any(grepl("\\[", colnames(peakdata)))) { #change else if to if when Gomez is done
     matched_colname <- grep(paste0("\\[", sample_name, "\\]"), colnames(peakdata), value = TRUE)
   } else if(any(grepl("^[0-9]+_", metadata$Sample.Name))){ #If the sample names start with a number, look for the colnames to start with the sample name (bc it already includes num)
-    matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE)
+    matched_colname <- grep(paste0("^", sample_name, "(_|$)"), colnames(peakdata), value = TRUE)
   } else { #If the sample names don't start with a number, look for a number, then the sample name in colnames (bc the sample name doesn't include the num)
     matched_colname <- grep(paste0("^[0-9]+","_", sample_name, "_"), colnames(peakdata), value = TRUE)
     #matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE) #Temporary for Dudeja bc those sample names are dumb
@@ -256,6 +254,19 @@ neg.output <- SECIM_Metabolomics(dataset=data,peakdata=peakdata,num_meta=num_met
 metadata <- read_excel(Input,sheet="Sample.data")
 
 peakdata <- read_excel(Input,sheet="Peaktable.pos")
+peakdata <- read_excel(Input,sheet="Peaktable.neg",col_names=F)
+# Get the first row to use as column names
+header_row <- as.character(peakdata[1, ])
+
+# Find duplicated column names
+dup_cols <- header_row[duplicated(header_row)]
+
+# Remove duplicated columns from the data
+peakdata <- peakdata[-1, ] # Remove the first row which contains the headers
+peakdata <- peakdata[, !duplicated(header_row)]
+
+# Set the non-duplicated column names
+colnames(peakdata) <- header_row[!duplicated(header_row)]
 
 #################################################
 ######Standardize peak table columns#############
@@ -371,16 +382,14 @@ if (length(samples_to_drop)>0){
 problematic_samples <- c()  #samples not in peakdata
 name_mapping <- sapply(metadata$Sample.Name, function(sample_name) {
   # Find the column name that matches the sample name
-if (grepl("Gomez",client)==1){
-  matched_colname <- grep(paste0("^[0-9]+","_", sample_name, "_"), colnames(peakdata), value = TRUE) #temporary for Gomez's weird sample names
-} else if (any(grepl("\\[", colnames(peakdata)))) {
+  if (any(grepl("\\[", colnames(peakdata)))) { #change else if to if when Gomez is done
     matched_colname <- grep(paste0("\\[", sample_name, "\\]"), colnames(peakdata), value = TRUE)
-  } else if(any(grepl("^[0-9]+_", metadata$Sample.Name))){ 
-    matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE)
-  } else {
-    matched_colname <- grep(paste0("^[0-9]+","_", sample_name, "_"), colnames(peakdata), value = TRUE) #temporary for Gomez's weird sample names
-    #matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE) #temporary for Dudeja
-    }
+  } else if(any(grepl("^[0-9]+_", metadata$Sample.Name))){ #If the sample names start with a number, look for the colnames to start with the sample name (bc it already includes num)
+    matched_colname <- grep(paste0("^", sample_name, "(_|$)"), colnames(peakdata), value = TRUE)
+  } else { #If the sample names don't start with a number, look for a number, then the sample name in colnames (bc the sample name doesn't include the num)
+    matched_colname <- grep(paste0("^[0-9]+","_", sample_name, "_"), colnames(peakdata), value = TRUE)
+    #matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE) #Temporary for Dudeja bc those sample names are dumb
+  }
   if (length(matched_colname) == 1) {
     return(matched_colname)
   } else {
@@ -392,9 +401,6 @@ if (grepl("Gomez",client)==1){
 name_mapping <- na.omit(name_mapping)
 # Filter metadata to remove any samples not in peakdata
 metadata <- metadata %>% dplyr::filter(!(Sample.Name %in% problematic_samples))
-# Assuming name_mapping and peakdata are as defined
-
-
 # Assuming name_mapping and peakdata are as defined
 
 # Subset peakdata to keep only the first four columns and the columns that match name_mapping
@@ -413,7 +419,11 @@ for (i in 5:ncol(peakdata)) {
 # Now, peakdata has the first four columns unchanged and other columns renamed as per name_mapping
 
 peaks <- peakdata[,metadata$Sample.Name]
-data <- data.frame(t(rbind(c(colnames(metadata),peakdata$id),merge(metadata,data.frame(t(peaks)),by.x="Sample.Name",by.y=0))))
+
+#merge peakdata and metadata
+data <- data.frame(t(rbind(c(colnames(metadata),peakdata$id),
+                           merge(metadata,data.frame(t(peaks)),by.x="Sample.Name",by.y=0))))
+
 colnames(data) <- data[1,];data <- data[-1,];data <- data %>% dplyr::rename("id"="Sample.Name");rownames(data) <- 1:nrow(data)
 dataset <- data
 
@@ -481,15 +491,15 @@ if (test_type=="nostats") {
     } 
 if (test_type %in% c("anova","lm","lme")){
     #For cases when 1+ of the duplicate KEGG IDs has a confidence level "1", pick the one with conf level 1 (then sort by p-value)
-    temp.HP.Keggs <- combined_results %>% filter(status=="HP") %>% dplyr::arrange(KEGG,Level,adj.p.value) %>% distinct(KEGG, .keep_all = TRUE)
+    temp.HP.Keggs <- combined_results %>% filter(status=="HP") %>% dplyr::arrange(KEGG,Level,p.value) %>% distinct(KEGG, .keep_all = TRUE)
     #For cases when 1+ of the duplicates does not have a confidence level "1", pick the best match and then the best p-value
-    temp.notHP.Keggs <- combined_results %>% filter(is.na(status)) %>% filter(!is.na(KEGG)) %>% dplyr::arrange(KEGG,plyr::desc(mz.match.score),adj.p.value) %>% distinct(KEGG, .keep_all = TRUE)
+    temp.notHP.Keggs <- combined_results %>% filter(is.na(status)) %>% filter(!is.na(KEGG)) %>% dplyr::arrange(KEGG,plyr::desc(mz.match.score),p.value) %>% distinct(KEGG, .keep_all = TRUE)
   
     #For peaks with Compound.names but no KEGG IDs
     #For cases when 1+ of the duplicates has a confidence level "1"
-    temp.HP.names <- combined_results %>% filter(status=="HP") %>% filter(is.na(KEGG)) %>% dplyr::arrange(temp.lc.Metabolite,Level,adj.p.value)%>% distinct(temp.lc.Metabolite, .keep_all = TRUE)
+    temp.HP.names <- combined_results %>% filter(status=="HP") %>% filter(is.na(KEGG)) %>% dplyr::arrange(temp.lc.Metabolite,Level,p.value)%>% distinct(temp.lc.Metabolite, .keep_all = TRUE)
     #For cases when 1+ of the duplicates does not have a confidence level "1"
-    temp.notHP.names <- combined_results %>% filter(is.na(status)) %>% dplyr::arrange(temp.lc.Metabolite,plyr::desc(mz.match.score),adj.p.value) %>% distinct(temp.lc.Metabolite, .keep_all = TRUE)
+    temp.notHP.names <- combined_results %>% filter(is.na(status)) %>% dplyr::arrange(temp.lc.Metabolite,plyr::desc(mz.match.score),p.value) %>% distinct(temp.lc.Metabolite, .keep_all = TRUE)
     }
 #Put them back together
 combined_results <- rbind(temp.HP.Keggs,temp.notHP.Keggs,temp.HP.names,temp.notHP.names) %>% dplyr::select(-status)%>% dplyr::select(-temp.lc.Metabolite) %>% distinct()

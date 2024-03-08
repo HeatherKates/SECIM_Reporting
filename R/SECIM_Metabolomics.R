@@ -27,6 +27,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   md <- data.frame(t(data.frame(dataset[1:num_meta,])))
   colnames(md) <- md[1,]
   md <- md %>% slice(-1)
+  rownames(md) <- gsub("^X","",rownames(md))
   
   if (num_meta==1){
   dataset[dataset==0] <- NA
@@ -90,7 +91,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   data.proc <- rbind(dataset[1:num_meta,],data.proc)
   }else{
     md <- md[match(colnames(data.final)[2:ncol(dataset)], rownames(md)), ]
-    tempmd <- data.frame(t(md));tempmd$id <- NA;tempmd <- tempmd %>% relocate(id)
+    tempmd <- data.frame(t(md));tempmd$id <- NA;tempmd <- tempmd %>% relocate(id);colnames(tempmd) <- gsub("^X","",colnames(tempmd))
     data.final <- rbind(tempmd,data.final)
     
     data.proc <- data.frame(t(proc.data))
@@ -236,24 +237,37 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
         }
       }
     if (test_type=="lme"){
-      fit <- foreach (i = (num_meta+1):nrow(data.final),.packages=c("dplyr","stats"))%do% {
-        temp <- data.frame(t(data.final[c(1:(num_meta),i),]))
-        colnames(temp) <- c(temp[1,][1:num_meta],"id"); temp <- temp[-1,]
+      fit_emmeans <- foreach(i = (num_meta+1):nrow(data.final), .packages = c("dplyr", "stats", "lmerTest", "emmeans", "broom")) %do% {
+        temp <- data.frame(t(data.final[c(1:(num_meta), i), ]))
+        colnames(temp) <- c(colnames(temp)[1:num_meta], "id")
+        temp <- temp[-1, ]
         temp$id <- as.numeric(temp$id)
-        fit <- lmerTest::lmer(lm_model,data=temp) #Where was I: for mixed-models, emmeans needs to run on this, so figure out a way to write output suitable for emmeans and for saving the dataset frame results
-        fit.results <- data.frame(summary(fit)[[10]])
-        fit.results$Coefficient <- rownames(fit.results)
-        rownames(fit.results) <- NULL
-        return(list(fit,fit.results))
+        
+        # Fit the model
+        fit <- lmerTest::lmer(lm_model, data = temp)
+        
+        # emmeans analysis
+        emmeans_obj <- emmeans(fit, specs = emmeans_var)
+        pairwise_emmeans_obj <- tidy(pairs(emmeans_obj))
+        
+        # Return both fit and emmeans results
+        list(fit = fit, emmeans = pairwise_emmeans_obj)
       }
+      
+      # Extract model fits and emmeans summary tables from the list
+      fit <- lapply(fit_emmeans, function(x) x$fit)
+      emmeans <- lapply(fit_emmeans, function(x) x$emmeans)
+      
     } 
     if(test_type %in% c("anova","lm")){
       fit.results <- lapply(fit,tidy)
       }
-    if (test_type=="lme"){
-      fit.results <- lapply(fit,'[[', 2)
-      fit <-  lapply(fit,'[[', 1)
-      }
+    if (test_type == "lme") {
+      library(broom.mixed)
+      # Using broom.mixed to tidy up the lmerTest model object
+      fit.results <- lapply(fit, function(x) tidy(x))
+    }
+    
     names(fit.results) <- data.final$id[(num_meta+1):nrow(data.final)]
     fit.results <- do.call("rbind", fit.results)
     fit.results$id <- rownames(fit.results)
@@ -340,6 +354,8 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   #Make a new object that has the old mzmine style colnames because that is what the function expects
   peakdataformetid <- peakdata
   peakdataformetid <- peakdataformetid[, c(1, 3, 2,4:ncol(peakdataformetid))]
+  peakdataformetid[-c(1, 4)] <- lapply(peakdataformetid[-c(1, 4)], function(x) as.numeric(as.character(x)))
+  
   colnames(peakdataformetid) <- c("row ID","row m/z","row retention time",colnames(peakdata)[4:ncol(peakdata)])
   metid = convet_mzmine2mass_dataset(x = peakdataformetid %>% dplyr::select(!compound) ,rt_unit = "minute")
   if(mode=="Pos"){
@@ -431,6 +447,10 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   metid.result$id <- as.double(metid.result$id)
   metid.result$mz <- as.double(metid.result$mz)
   metid.result$rt <- as.double(metid.result$rt)
+  #
+  peakdata.KEGG$id <- as.double(peakdata.KEGG$id)
+  peakdata.KEGG$mz <- as.double(peakdata.KEGG$mz)
+  peakdata.KEGG$rt <- as.double(peakdata.KEGG$rt)
   metid.result <- metid.result %>% dplyr::rename("compound"="Compound.name")
   peak_annotation <- dplyr::bind_rows(peakdata.KEGG, metid.result)
   #If there is no compound from SECIM or metID, use the mz_rt
