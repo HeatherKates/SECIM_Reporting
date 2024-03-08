@@ -44,7 +44,26 @@ source("SECIM_Reporting/R/SanityCheck.HRK.R")
 #No special characters in names or metadata except for "_" and ".". 
 #Names of samples are in columns in the peaktable and the string before the "p" or "n" must match the sample names in the metadata 
 metadata <- read_excel(Input,sheet="Sample.data")
-peakdata <- read_excel(Input,sheet="Peaktable.neg")
+peakdata <- read_excel(Input,sheet="Peaktable.neg",colnames=FALSE)
+# Get the first row to use as column names
+header_row <- as.character(peakdata[1, ])
+
+# Find duplicated column names
+dup_cols <- header_row[duplicated(header_row)]
+
+# Remove duplicated columns from the data
+peakdata <- peakdata[-1, ] # Remove the first row which contains the headers
+peakdata <- peakdata[, !duplicated(header_row)]
+
+# Set the non-duplicated column names
+colnames(peakdata) <- header_row[!duplicated(header_row)]
+
+# Print message about removed columns
+if(length(dup_cols) > 0) {
+  cat("The following duplicated columns were removed:", paste(dup_cols, collapse = ", "), "\n")
+} else {
+  cat("No duplicated columns were removed.\n")
+}
 
 #################################################
 ######Standardize peak table columns#############
