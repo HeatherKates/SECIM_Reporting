@@ -242,6 +242,10 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
         colnames(temp) <- c(colnames(temp)[1:num_meta], "id")
         temp <- temp[-1, ]
         temp$id <- as.numeric(temp$id)
+        #Convert variables to factors
+        temp$Class <- as.factor(temp$Class)
+        temp$Subject <- as.factor(temp$Subject)
+        temp$Batch <- as.factor(temp$Batch)
         
         # Fit the model
         fit <- lmerTest::lmer(lm_model, data = temp)
@@ -280,9 +284,6 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
     emmeans.results$id <- gsub("\\.[0-9\\+]","",emmeans.results$id) #added the rowID key
   }
 
-
-  
-  
   ######################
   #####GROUP-MEANS######
   ######################
