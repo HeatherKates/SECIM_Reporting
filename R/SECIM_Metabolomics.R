@@ -473,14 +473,26 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   } 
   if (test_type %in% c("lm","anova","lme")){
     outputs_list[[1]] <- merge(emmeans.results,peak_annotation,by="id",all.x=TRUE)
-    #In case emmeans adds "()" due to special chars
+    # In case emmeans adds "()" due to special chars
     outputs_list[[1]]$contrast <- gsub("[()]", "",outputs_list[[1]]$contrast)
-    outputs_list[[1]] <- outputs_list[[1]] %>% inner_join(means_FC, 
-                           by=c('id', 'contrast'))
-    outputs_list[[1]] <- outputs_list[[1]] %>% relocate(contrast,compound)
+    
+    # Check the number of unique levels in emmeans.results$contrast
+    if(length(unique(emmeans.results$contrast)) > 1){
+      # More than one level, run the original processing
+      outputs_list[[1]] <- outputs_list[[1]] %>% inner_join(means_FC, by=c('id', 'contrast'))
+      outputs_list[[1]] <- outputs_list[[1]] %>% relocate(contrast,compound)
+    } else {
+      # Only one level, add the additional line for adjusting p-value
+      outputs_list[[1]]$adj.p.value <- p.adjust(outputs_list[[1]]$p.value, method="fdr")
+      # Assuming you still want to run these lines even if there's only one level
+      outputs_list[[1]] <- outputs_list[[1]] %>% inner_join(means_FC, by=c('id', 'contrast'))
+      outputs_list[[1]] <- outputs_list[[1]] %>% relocate(contrast,compound)
+    }
+    
     outputs_list[[2]] <- merge(fit.results,peak_annotation,by="id",all.x=TRUE)
     outputs_list[[2]] <- outputs_list[[2]] %>% relocate(compound)
   }
+  
   if (test_type == "nostats"){
   outputs_list[[1]] <- merge(means_FC,peak_annotation,by="id",all.x=TRUE)
   outputs_list[[1]]$contrast <- gsub("[()]", "",outputs_list[[1]]$contrast)
