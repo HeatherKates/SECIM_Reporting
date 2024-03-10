@@ -81,7 +81,9 @@ Client_Data_Download <- ReportInput
 
 #Difference in v3.3 from 3.2 is adding an if statement to pick whether to show padj or p
 if(test_type %in% c("anova", "lmm","repeated_measures_anova")){
-p_type="adj.p.value"
+if(nrow(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05)) > 10){
+    p_type="adj.p.value"} else {
+      p_type="p.value"}
 sig_knowns <- nrow(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05) %>% filter(Level==1)) 
 } 
 if (test_type =="t.test"){
@@ -340,9 +342,7 @@ numsonly <- data.frame(PCA_DATA[,-c(1:num_of_metadata-1)])
 numsonly <- data.frame(lapply(numsonly,as.numeric))
 pca_res <- prcomp(numsonly, center = TRUE, scale. = FALSE,rank. = 2) #The old version used the defaults
 
-
 scores <- pca_res$x
-
 
 colors <- RColorBrewer::brewer.pal(num_groups, "Set1")
 # Function to plot ellipse for each target
