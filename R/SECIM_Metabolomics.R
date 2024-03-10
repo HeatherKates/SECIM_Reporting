@@ -12,7 +12,8 @@
 #emmeans_contrasts=ALL or like: `list(c("Level1", "Level2"), c("Level3", "Level4"))`
 #I just need to find out why there is an "X" before the sample names in the dataset 4/20 4:32
 SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_var,anova_formula,lm_model,
-                              test_type,subset,SECIM_column,emmeans_var,mode,metid_DB_file,client,metadata,paired=paired){
+                              test_type,subset,SECIM_column,emmeans_var,mode,metid_DB_file,client,
+                              metadata,paired=FALSE,batch_correct=NULL){
   
 
   # Store the names of objects in the global environment before loading the file
@@ -50,7 +51,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   mSet<-SanityCheckDataHRK(mSet)
   #Get the metadataset from mSet so the order matches throughout
   md <- data.frame(mSet[["dataSet"]][["meta.info"]])
-  rownames(md) <- mSet[["dataSet"]][["url.smp.nms"]]
+  #rownames(md) <- mSet[["dataSet"]][["url.smp.nms"]]
 }
   
   #Use metaboanalystR instead of custom functions
@@ -90,9 +91,13 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   
   data.proc <- rbind(dataset[1:num_meta,],data.proc)
   }else{
-    md <- md[match(colnames(data.final)[2:ncol(dataset)], rownames(md)), ]
-    tempmd <- data.frame(t(md));tempmd$id <- NA;tempmd <- tempmd %>% relocate(id);colnames(tempmd) <- gsub("^X","",colnames(tempmd))
-    data.final <- rbind(tempmd,data.final)
+    #md <- md[match(colnames(data.final)[2:ncol(dataset)], rownames(md)), ]
+    #tempmd <- data.frame(t(md));tempmd$id <- NA;tempmd <- tempmd %>% relocate(id);colnames(tempmd) <- gsub("^X","",colnames(tempmd))
+    tmd <- data.frame(t(md))
+    tmd$id <- ""
+    tmd <- tmd %>% dplyr::relocate(id)
+    colnames(tmd) <- gsub("^X","",colnames(tmd))
+    data.final <- rbind(tmd,data.final)
     
     data.proc <- data.frame(t(proc.data))
     colnames(data.proc) <- gsub("^X","",colnames(data.proc))
@@ -100,10 +105,10 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
     data.proc <- data.proc %>% relocate(id)
     colnames(data.proc) <- gsub("X","",colnames(data.proc))#v6
     # Get the column names from dataset[1:num_meta,]
-    meta_cols <- colnames(dataset[1:num_meta,])
+    #meta_cols <- colnames(dataset[1:num_meta,])
     # Order the columns of data.proc based on meta_cols
-    data.proc <- data.proc[, order(colnames(data.proc) %in% meta_cols)]
-    data.proc <- rbind(tempmd,data.proc)  
+    #data.proc <- data.proc[, order(colnames(data.proc) %in% meta_cols)]
+    data.proc <- rbind(tmd,data.proc)  
   }
   
 
@@ -112,6 +117,68 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   ###############
   ##Ref:https://ucdavis-bioinformatics-training.github.io/2018-September-Bioinformatics-Prerequisites/friday/linear_models.html
   ###############
+  
+  #Batch correction with 
+  if (batch_correct=="ComBat"){
+    # Extracting batch information
+    batch_info <- as.numeric(data.final[3, -1])  # Assuming the third row contains batch information and excluding the 'id' column
+    
+    # Extracting and preparing the matrix for ComBat
+    data_matrix <- as.matrix(data.final[-(1:num_meta), -1])  # Excludes the first three rows (metadata) and the first column ('id')
+    rownames(data_matrix) <- data.final[-(1:num_meta), 1]  # Sets row names to the 'id' of features
+    data_matrix <- apply(data_matrix, 2, as.numeric)  # Ensure numeric data
+    # Assuming data_matrix is correctly formatted as numeric matrix
+    original_feature_names <- rownames(data.final[-(1:num_meta), -1])   # Features, e.g., compounds or genes
+    original_sample_names <- colnames(data_matrix)   # Sample identifiers
+    
+    # Now, your data is ready for batch correction. `data_matrix` is your input matrix, and `batch_info` is your batch vector.
+    library(sva)
+    
+    # Applying ComBat for batch correction
+    data_corrected <- ComBat(dat = data_matrix, batch = batch_info, mod = NULL, par.prior = TRUE, prior.plots = FALSE)
+    rownames(data_corrected) <- original_feature_names
+    colnames(data_corrected) <- original_sample_names
+    data_final_corrected <- as.data.frame(data_corrected)
+    data_final_corrected$id <- rownames(data.final)[c((num_meta+1):nrow(data.final))]
+    rownames(data_final_corrected) <- data_final_corrected$id
+    data_final_corrected <- data_final_corrected %>% dplyr::relocate(id)  
+    #add metadata columns
+    data_final_corrected <- rbind(data.final[c(1:num_meta),],data_final_corrected)
+    data.final <- data_final_corrected
+  }
+  if(batch_correct=="limma"){
+    library(limma)
+    batch_info <- as.numeric(data.final[3, -1])  # Assuming the third row contains batch information and excluding the 'id' column
+    
+    # Extracting and preparing the matrix for ComBat
+    data_matrix <- as.matrix(data.final[-(1:num_meta), -1])  # Excludes the first three rows (metadata) and the first column ('id')
+    rownames(data_matrix) <- data.final[-(1:num_meta), 1]
+    # Ensure data_matrix is numeric
+    data_matrix <- apply(data_matrix, 2, as.numeric)
+    # Assuming data_matrix is correctly formatted as numeric matrix
+    original_feature_names <- rownames(data.final[-(1:num_meta), -1])  # Features, e.g., compounds or genes
+    original_sample_names <- colnames(data_matrix)   # Sample identifiers
+    
+    # Apply removeBatchEffect
+    data_matrix_corrected <- removeBatchEffect(data_matrix, batch=batch_info)
+    
+    # Restore row names (features/metabolites) if they were removed
+    rownames(data_matrix_corrected) <- original_feature_names
+    # Convert the corrected matrix back to a data frame, transposing it so that features become columns
+    data_corrected_df <- as.data.frame(data_matrix_corrected)
+    
+    # Add the sample identifiers as the first column
+    data_corrected_df$id <- original_feature_names
+    
+    # Use dplyr::relocate to move the 'id' column to the first position
+    data_corrected_df <- dplyr::relocate(data_corrected_df, id)
+    
+    # Re-add the metadata rows at the top of the dataframe
+    # Assuming you've stored your metadata similarly to how you extracted batch_info
+    data_final_corrected <- rbind(data.final[c(1:num_meta),],data_corrected_df)
+    data.final <- data_final_corrected
+    
+  }
   
   if (test_type=="t.test"){
     print(contrast_var)
@@ -132,7 +199,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
       if(is.null(subset)){
         if(paired==TRUE){
           # Ensure the data is ordered consistently for both groups
-          temp <- temp[order(temp$rowID, temp$subject), ]
+          temp <- temp[order(temp$rowID, temp$Subject), ]
           
           # Extract the Metabolite values for each group
           group1 <- temp$Metabolite[temp$Class == levels(as.factor(temp[[contrast_var]]))[1]]
@@ -159,7 +226,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
           ttest.res=list()
           for(n in 1:length(subset)){
            
-            temp <- temp[order(temp$rowID, temp$subject), ]
+            temp <- temp[order(temp$rowID, temp$Subject), ]
             temp <- temp %>% filter(Class %in% subset[[n]])
             
             # Extract the Metabolite values for each group

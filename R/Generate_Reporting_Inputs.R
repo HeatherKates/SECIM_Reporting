@@ -1,5 +1,6 @@
 Generate_Report_Inputs <-function(client,samples_to_drop=NULL,mzmine_version,ReferenceLevel=NULL,Input,contrast_var,
-                                  num_meta,SECIM_column,anova_formula=NULL,lm_model=NULL,test_type,subset=NULL,metid_DB_file,paired=paired){
+                                  num_meta,SECIM_column,anova_formula=NULL,lm_model=NULL,test_type,subset=NULL,metid_DB_file,
+                                  paired=paired,batch_correct=batch_correct){
   #client="Dudeja.Serum"
   #samples_to_drop=c("")
   #mzmine_version=2
@@ -247,14 +248,13 @@ dataset <- data
 neg.output <- SECIM_Metabolomics(dataset=data,peakdata=peakdata,num_meta=num_meta,original_data=data,contrast_var=contrast_var,
   subset=subset,
   anova_formula=anova_formula,SECIM_column=SECIM_column,lm_model=lm_model,test_type=test_type,emmeans_var=contrast_var,mode="Neg",
-  metid_DB_file=metid_DB_file,client=client,metadata=metadata,paired=paired)
+  metid_DB_file=metid_DB_file,client=client,metadata=metadata,paired=paired,batch_correct=batch_correct)
 
 #Positive mode
 
 metadata <- read_excel(Input,sheet="Sample.data")
 
-peakdata <- read_excel(Input,sheet="Peaktable.pos")
-peakdata <- read_excel(Input,sheet="Peaktable.neg",col_names=F)
+peakdata <- read_excel(Input,sheet="Peaktable.pos",col_names=F)
 # Get the first row to use as column names
 header_row <- as.character(peakdata[1, ])
 
@@ -444,7 +444,7 @@ pos.output <- SECIM_Metabolomics(
   dataset=data,peakdata=peakdata,num_meta=num_meta,original_data=data,contrast_var=contrast_var,
   subset=subset,
   anova_formula=anova_formula,SECIM_column=SECIM_column,lm_model=lm_model,test_type=test_type,emmeans_var=contrast_var,mode="Pos",
-  metid_DB_file=metid_DB_file,client=client,metadata=metadata,paired=paired)
+  metid_DB_file=metid_DB_file,client=client,metadata=metadata,paired=paired,batch_correct=batch_correct)
 
 #save.image(paste(client,"functionoutput.RDATA",sep="_"))
 #################################################

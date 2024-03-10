@@ -296,6 +296,10 @@ Missing data were imputed by k-nearest neighbor imputation as implemented in the
 
 `r if(norm_method=="Sum"){"Peak intensities were normalized sample-wise using sum normalization followed by log (base 10) transformation as implemented R package MetaboAnalystR (https://github.com/xia-lab/MetaboAnalystR). Please note that this method of normalization results in negative values and these are expected in your normalized dataset."}`
 
+`r if(batch_correct=="ComBat"){"Peak intensities were batch-corrected using the ComBat function from the R package sva (Leek JT et al. 2022) "}`
+
+`r if(batch_correct=="limma"){"Peak intensities were batch-corrected using the removeBatchEffect() function from the R package limma (Ritchie ME et al. 2015) "}`
+
 \n Visualizations to assess the effect of normalization are provided below.
 
 ##  Normalization Result (Positive ionization mode) </span>
@@ -330,6 +334,74 @@ Following analysis of all compounds detected in positive and negative ionization
 ## PCA (multivariate analaysis)</span>
 
 Principal component analysis of untargeted metabolomics data. Two-dimensional PCA score plots reveal possible separation in metabolite profiles related to variables of interest. Ellipses are calculated using the R package car (Fox J. and Weisberg S. 2019) and ~1 Std dev.
+
+```{r}
+if(!is.null(batch_correct)){
+#We want to remove the metadata row(s) and all non sample cols from Client_Data_Download
+ PCA_DATA <- t(rbind(Client_Data_Download_out[["Neg.normalized.data"]][,3:(num_samples+2)],
+ Client_Data_Download_out[["Pos.normalized.data"]][-(1:num_of_metadata-1),3:(num_samples+2)]))
+
+numsonly <- data.frame(PCA_DATA[,-c(1:num_of_metadata-1)])
+#Make numeric
+
+numsonly <- data.frame(lapply(numsonly,as.numeric))
+pca_res <- prcomp(numsonly, center = TRUE, scale. = FALSE,rank. = 2) #The old version used the defaults
+
+scores <- pca_res$x
+
+colors <- RColorBrewer::brewer.pal(num_batches, "Set1")
+# Function to plot ellipse for each target
+plot_ellipse_function <- function(target) {
+  target_data <- as.data.frame(scores[PCA_DATA[,3] == target, 1:2])
+  target_color <- colors[which(unique(PCA_DATA[,3]) == target)]
+  
+  # Ellipse
+  ellipse_coords <- car::dataEllipse(target_data$PC1, target_data$PC2, 
+                                     levels = 0.68, # roughly corresponds to 1 std dev
+                                     plot.points = FALSE, add = TRUE, draw = FALSE)
+  
+  fig <<- fig %>% 
+    add_polygons(x = ellipse_coords[,1], y = ellipse_coords[,2],
+                 line = list(color = target_color, dash = "dot"),
+                 fillcolor = target_color, opacity = 0.3,
+                 showlegend = F,
+                 hoverinfo = "skip")  # this tells plotly not to show any hover information for the ellipses
+}
+
+# Function to plot points for each target
+plot_points_function <- function(target) {
+  target_data <- as.data.frame(scores[PCA_DATA[,3] == target, 1:2])
+  rownames(target_data) <- rownames(PCA_DATA)[PCA_DATA[,3]==target]
+  target_color <- colors[which(unique(PCA_DATA[,3]) == target)]
+  
+  text_data <- as.character(rownames(target_data))
+  PC1 <- as.numeric(target_data$PC1)
+  PC2 <- as.numeric(target_data$PC2)
+
+  # Scatter points
+  fig <<- fig %>% 
+    add_trace(data = target_data,
+              x = ~PC1, y = ~PC2, 
+              type = "scatter",
+              mode = "markers",
+              name = target,
+              marker = list(color = target_color),
+              text = ~text_data,
+              hoverinfo = "text")  # this tells plotly to display the text when hovering
+}
+
+fig <- plot_ly()
+
+# First loop: Plot all ellipses
+invisible(lapply(unique(PCA_DATA[,3]), plot_ellipse_function))
+
+# Second loop: Plot all points
+invisible(lapply(unique(PCA_DATA[,3]), plot_points_function))
+
+fig
+}
+rm(fig)
+```
 
 ```{r}
 #We want to remove the metadata row(s) and all non sample cols from Client_Data_Download
@@ -1182,8 +1254,6 @@ if(p_type=="log2FC"){
 }
 #detected in positive 
 
-#Combine
-#Combine
 #Combine - CHANGE where n:nrow begins depends on...number of metadata? not usre
 normalized_int <- rbind(
   Client_Data_Download[["Pos.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Pos.normalized.data"]]),3:(num_samples+2)],
