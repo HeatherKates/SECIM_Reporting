@@ -402,6 +402,8 @@ fig
 
 `r if(test_type=="repeated_measures_anova"){"A repeated-measures ANOVA was performed using the R package stats (R Core Team 2023) to determine whether there was a significant effect of variable Class on metabolite peak intensity. The anova formula was Metabolite~Class+Error(ID) and post-hoc pairwise comparisons were performed using Estimated Marginal Means (aka Least-Squares Means) as implemented in the R package emmeans (R.V. Lenth 2023). Adjusted p-values are adjusted for multiple pairwise comparison testing, not testing of multiple metabolites."}`
 
+`r if(test_type=="lmm"){"A linear mixed model was performed using the R package stats (R Core Team 2023) to determine whether there was a significant effect of variable Class on metabolite peak intensity, and post-hoc pairwise comparisons were performed using Estimated Marginal Means (aka Least-Squares Means) as implemented in the R package emmeans (R.V. Lenth 2023). Adjusted p-values are corrected using the FDR method of p-value correction."}`
+
 `r if(test_type == "t.test") {
   if(paired == TRUE) {
     paste0("For each compound, a paired t-test was performed using the R package stats (R Core Team 2023) to test the null hypothesis that the mean intensity for group one (e.g. before) = the mean intensity for group two (e.g. after). Adjusted p-values are corrected using the FDR method of p-value correction. If fewer than ten significantly changed metabolites were identified based on adjusted p-values, uncorrected p-values are reported.",
