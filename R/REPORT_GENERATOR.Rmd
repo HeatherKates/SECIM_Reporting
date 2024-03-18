@@ -336,7 +336,7 @@ Following analysis of all compounds detected in positive and negative ionization
 Principal component analysis of untargeted metabolomics data. Two-dimensional PCA score plots reveal possible separation in metabolite profiles related to variables of interest. Ellipses are calculated using the R package car (Fox J. and Weisberg S. 2019) and ~1 Std dev.
 
 ```{r}
-if(!is.null(batch_correct)){
+if(batch_correct %in% c("limma","ComBat")){
 #We want to remove the metadata row(s) and all non sample cols from Client_Data_Download
  PCA_DATA <- t(rbind(Client_Data_Download_out[["Neg.normalized.data"]][,3:(num_samples+2)],
  Client_Data_Download_out[["Pos.normalized.data"]][-(1:num_of_metadata-1),3:(num_samples+2)]))
@@ -1265,11 +1265,12 @@ normalized_int <- filter(normalized_int, rownames(normalized_int) %in% top20_sig
 
 normalized_int <- mutate_all(normalized_int, function(x) as.numeric(as.character(x)))
 
-sidecols <- data.frame(Client_Data_Download[["metadata"]] %>% select(colnames(Client_Data_Download[["metadata"]][2:ncol(Client_Data_Download[["metadata"]])]))) #Maybe sometimes this should have >1 metadata
+sidecols <- data.frame(Client_Data_Download[["metadata"]] %>% select(colnames(Client_Data_Download[["metadata"]][2:ncol(Client_Data_Download[["metadata"]])]))) %>% select(contrast_var)
 temp.normalized.int <- t(normalized_int)
 temp.normalized.int <- merge(temp.normalized.int,sidecols,by=0)
-sidecols <- temp.normalized.int[,c(1,(ncol(temp.normalized.int)-(num_of_metadata-2)):ncol(temp.normalized.int))]
-#arrange the sidecols by the colnames in 
+#Everything else was commented out for a dataset with > 1 metadata, but is it even needed for 1 metadata? Check ASAP
+sidecols <- temp.normalized.int[,c(1,(ncol(temp.normalized.int)-(num_of_metadata-2)):ncol(temp.normalized.int))] #What was this for
+##arrange the sidecols by the colnames in 
 rownames(sidecols) <- sidecols$Row.names
 sidecols <- data.frame(sidecols[,-1])
 colnames(sidecols) <- colnames(Client_Data_Download[["metadata"]][2:ncol(Client_Data_Download[["metadata"]])])
