@@ -485,7 +485,7 @@ if(test_type == "lmm") {
     paste0("For each compound, a paired t-test was performed using the R package stats (R Core Team 2023) to test the null hypothesis that the mean intensity for group one (e.g. before) = the mean intensity for group two (e.g. after). Adjusted p-values are corrected using the FDR method of p-value correction. If fewer than ten significantly changed metabolites were identified based on adjusted p-values, uncorrected p-values are reported.",
     "<strong>If fewer than ten significantly changed metabolites were identified based on adjusted p-values, uncorrected p-values are reported.</strong>")
   } else {
-    paste0("For each compound, a t-test was performed using the R package stats (R Core Team 2023) to test the null hypothesis that the mean intensity for group one = the mean intensity for group two. Adjusted p-values are corrected using the FDR method of p-value correction. ", 
+    paste0("For each compound, a Welch's t-test was performed using the R package stats (R Core Team 2023) to test the null hypothesis that the mean intensity for group one = the mean intensity for group two. Adjusted p-values are corrected using the FDR method of p-value correction. ", 
     "<strong>If fewer than ten significantly changed metabolites were identified based on adjusted p-values, uncorrected p-values are reported.</strong>")
   }
 }`
