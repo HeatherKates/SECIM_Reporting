@@ -294,7 +294,7 @@ Missing data were imputed by k-nearest neighbor imputation as implemented in the
 
 `r if(norm_method=="quantile"){"Peak intensities were normalized using the quantile method of normalization as implemented the R package MSPrep (McGrath M et al. 2022)."}`
 
-`r if(norm_method=="Sum"){"Peak intensities were normalized sample-wise using sum normalization followed by log (base 10) transformation as implemented R package MetaboAnalystR (https://github.com/xia-lab/MetaboAnalystR). Please note that this method of normalization results in negative values and these are expected in your normalized dataset."}`
+`r if(norm_method=="Sum"){"Peak intensities were normalized sample-wise using sum normalization followed by log (base 10) transformation and Pareto scaling as implemented R package MetaboAnalystR (https://github.com/xia-lab/MetaboAnalystR). Please note that this method of normalization results in negative values and these are expected in your normalized dataset."}`
 
 `r if(batch_correct=="ComBat"){"Peak intensities were batch-corrected using the ComBat function from the R package sva (Leek JT et al. 2022) "}`
 
