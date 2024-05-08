@@ -296,12 +296,22 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
         
       }
     if (test_type=="lm"){
-        fit <- foreach (i = (num_meta+1):nrow(data.final),.packages=c("dplyr","stats"))%do% {
+        fit_emmeans <- foreach (i = (num_meta+1):nrow(data.final),.packages=c("dplyr","stats","emmeans"))%do% {
         temp <- data.frame(t(data.final[c(1:(num_meta),i),]))
         colnames(temp) <- c(temp[1,][1:num_meta],"Metabolite"); temp <- temp[-1,]
         temp$Metabolite <- as.numeric(temp$Metabolite)
-        lm(lm_model, data = temp)
+        fit <- lm(lm_model, data = temp)
+        
+        # emmeans analysis
+        emmeans_obj <- emmeans(fit, specs = emmeans_var)
+        pairwise_emmeans_obj <- tidy(pairs(emmeans_obj))
+        
+        # Return both fit and emmeans results
+        list(fit = fit, emmeans = pairwise_emmeans_obj)
         }
+        # Extract model fits and emmeans summary tables from the list
+        fit <- lapply(fit_emmeans, function(x) x$fit)
+        emmeans <- lapply(fit_emmeans, function(x) x$emmeans)
       }
     if (test_type=="lme"){
       fit_emmeans <- foreach(i = (num_meta+1):nrow(data.final), .packages = c("dplyr", "stats", "lmerTest", "emmeans", "broom")) %do% {
@@ -630,11 +640,11 @@ files_to_remove <- c("/blue/timgarrett/hkates/complete_norm.qs", "/blue/timgarre
                      "/blue/timgarrett/hkates/preproc.qs", "/blue/timgarrett/hkates/row_norm.qs")
 
 # Remove specific files
-file.remove(files_to_remove)
+#file.remove(files_to_remove)
 
 # For patterns, use list.files with a pattern and then remove those files
 neg_metab_files <- list.files(pattern = "/blue/timgarrett/hkates/.* Neg metab\\.in\\.csv$")
 pos_metab_files <- list.files(pattern = "/blue/timgarrett/hkates/.* Pos metab\\.in\\.csv$")
 
 # Remove files matching patterns
-file.remove(c(neg_metab_files, pos_metab_files))
+#file.remove(c(neg_metab_files, pos_metab_files))
