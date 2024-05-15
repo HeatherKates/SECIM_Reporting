@@ -13,7 +13,8 @@
 #I just need to find out why there is an "X" before the sample names in the dataset 4/20 4:32
 SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_var,anova_formula,lm_model,
                               test_type,subset,SECIM_column,emmeans_var,mode,metid_DB_file,client,
-                              metadata,paired=FALSE,batch_correct=NULL){
+                              metadata,paired=FALSE,batch_correct=NULL,
+                              rowNorm="SumNorm",transNorm="LogNorm",scaleNorm="ParetoNorm"){
   
 
   # Store the names of objects in the global environment before loading the file
@@ -63,7 +64,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   mSet<-FilterVariable(mSet, filter="iqr", "F", 10)
   #Normalization
   mSet<-PreparePrenormData(mSet)
-  mSet<-Normalization(mSet, "SumNorm", "LogNorm", "ParetoNorm", ratio=FALSE, ratioNum=20)
+  mSet<-Normalization(mSet, rowNorm=rowNorm, transNorm=transNorm, scaleNorm=transNorm, ratio=FALSE, ratioNum=20)
   proc.data <- qread("data_proc.qs") #for plotting
   norm.data <- qread("complete_norm.qs") #for plotting
   

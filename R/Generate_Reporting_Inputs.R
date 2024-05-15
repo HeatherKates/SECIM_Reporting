@@ -1,6 +1,13 @@
 Generate_Report_Inputs <-function(client,samples_to_drop=NULL,mzmine_version,ReferenceLevel=NULL,Input,contrast_var,
                                   num_meta,SECIM_column,anova_formula=NULL,lm_model=NULL,test_type,subset=NULL,metid_DB_file,
-                                  paired=paired,batch_correct=batch_correct){
+                                  paired=paired,batch_correct=batch_correct,rowNorm="SumNorm",transNorm="LogNorm",scaleNorm="ParetoNorm"){
+  
+  #rowNorm	
+  #Select the option for row-wise normalization, "QuantileNorm" for Quantile Normalization, "CompNorm" for Normalization by a reference feature, "SumNorm" for Normalization to constant sum, "MedianNorm" for Normalization to sample median, and "SpecNorm" for Normalization by a sample-specific factor.
+  #transNorm	
+  #Select option to transform the data, "LogNorm" for Log Normalization, and "CrNorm" for Cubic Root Transformation.
+  #scaleNorm	
+  #Select option for scaling the data, "MeanCenter" for Mean Centering, "AutoNorm" for Autoscaling, "ParetoNorm" for Pareto Scaling, and "RangeNorm" for Range Scaling.
   #client="Dudeja.Serum"
   #samples_to_drop=c("")
   #mzmine_version=2
@@ -213,6 +220,7 @@ peakdata <- peakdata[, colnames(peakdata) %in% columns_to_keep, drop = FALSE]
 
 # Replace the column names in peakdata that match the names in name_mapping
 # The first four columns are left unchanged
+
 for (i in 5:ncol(peakdata)) {
   colname <- colnames(peakdata)[i]
   if (colname %in% name_mapping) {
@@ -409,6 +417,7 @@ peakdata <- peakdata[, colnames(peakdata) %in% columns_to_keep, drop = FALSE]
 
 # Replace the column names in peakdata that match the names in name_mapping
 # The first four columns are left unchanged
+
 for (i in 5:ncol(peakdata)) {
   colname <- colnames(peakdata)[i]
   if (colname %in% name_mapping) {
@@ -604,12 +613,12 @@ files_to_remove <- c("/blue/timgarrett/hkates/complete_norm.qs", "/blue/timgarre
                      "/blue/timgarrett/hkates/preproc.qs", "/blue/timgarrett/hkates/row_norm.qs")
 
 # Remove specific files
-file.remove(files_to_remove)
+#file.remove(files_to_remove)
 
 # For patterns, use list.files with a pattern and then remove those files
 neg_metab_files <- list.files(pattern = "/blue/timgarrett/hkates/.* Neg metab\\.in\\.csv$")
 pos_metab_files <- list.files(pattern = "/blue/timgarrett/hkates/.* Pos metab\\.in\\.csv$")
 
 # Remove files matching patterns
-file.remove(c(neg_metab_files, pos_metab_files))
+#file.remove(c(neg_metab_files, pos_metab_files))
 
