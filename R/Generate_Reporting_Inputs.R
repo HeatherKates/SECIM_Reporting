@@ -172,6 +172,7 @@ if(!is.null(ReferenceLevel)){
 }
 
 if (length(samples_to_drop)>0){
+  samples_to_drop <- gsub("-","_",samples_to_drop)
   metadata <- metadata %>% filter(!Sample.Name %in% samples_to_drop)
 }
 
