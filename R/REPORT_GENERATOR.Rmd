@@ -155,7 +155,7 @@ Study Summary: `r StudySummary`
 
 ## Sample Information</span>
 
-The PI provided `r {nrow(Client_Data_Download$metadata)}` `r SampleType` samples.
+The PI provided `r {nrow(Client_Data_Download$metadata)}` `r SampleType`
 
 ```{r}
 datatable(data.frame(table(Client_Data_Download$metadata$Class)), 
@@ -1331,7 +1331,7 @@ Select areas of within this subnetwork to view and export clusters of interest.
 load("../InputFiles/KEGG_network.RDATA")
 ```
 
-```{r,network,eval=TRUE,warning=FALSE,message=FALSE,fig.dim=c(40,40)}
+```{r,network,eval=TRUE,error=TRUE,warning=FALSE,message=FALSE,fig.dim=c(40,40)}
 vars_created <- c("axis.up", "edge_shape", "edge_shapes", "edge_shapes.up", "es.up", "final_vars", 
                   "KEGG_map", "L.up", "message_text", "Ne.up", "network.up", "node.data.up", 
                   "Nv.up", "sig.up.KEGGs.up", "up.graph", "up.plot.up", "v0", "v1", "vars_created", 
