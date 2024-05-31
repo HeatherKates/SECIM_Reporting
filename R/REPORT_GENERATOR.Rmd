@@ -155,7 +155,7 @@ Study Summary: `r StudySummary`
 
 ## Sample Information</span>
 
-The PI provided `r {nrow(Client_Data_Download$metadata)}` `r SampleType`
+The PI provided `r {nrow(Client_Data_Download$metadata %>% filter(!str_detect(Sample.name, "Pool")))}` `r SampleType`
 
 ```{r}
 datatable(data.frame(table(Client_Data_Download$metadata$Class)), 
@@ -1448,7 +1448,7 @@ source("Generate_network.R")
            dplyr::select(KEGG) %>% filter(!KEGG=="")} else{
         network_data[["sig.down.KEGGs.down"]][[i]] <- Client_Data_Download[["report_results"]] %>% 
     filter(contrast==contrasts[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>%
-           filter(log2FC > 0) %>% filter(Level==1) %>%
+           filter(log2FC < 0) %>% filter(Level==1) %>%
            dplyr::select(KEGG) %>% filter(!KEGG=="")
            }
   
