@@ -344,8 +344,8 @@ Principal component analysis of untargeted metabolomics data. Two-dimensional PC
 ```{r}
 if(batch_correct %in% c("limma","ComBat")){
 #We want to remove the metadata row(s) and all non sample cols from Client_Data_Download
- PCA_DATA <- t(rbind(Client_Data_Download_out[["Neg.processed.data"]][,3:(num_samples+2)],
- Client_Data_Download_out[["Pos.processed.data"]][-(1:num_of_metadata-1),3:(num_samples+2)]))
+ PCA_DATA <- t(rbind(Client_Data_Download_out[["Neg.normalized.data"]][,3:(num_samples+2)],
+ Client_Data_Download_out[["Pos.normalized.data"]][-(1:num_of_metadata-1),3:(num_samples+2)]))
 
 numsonly <- data.frame(PCA_DATA[,-c(1:num_of_metadata-1)])
 #Make numeric
@@ -1271,15 +1271,19 @@ normalized_int <- filter(normalized_int, rownames(normalized_int) %in% top20_sig
 
 normalized_int <- mutate_all(normalized_int, function(x) as.numeric(as.character(x)))
 
-sidecols <- data.frame(Client_Data_Download[["metadata"]] %>% select(colnames(Client_Data_Download[["metadata"]][2:ncol(Client_Data_Download[["metadata"]])]))) %>% select(contrast_var)
 temp.normalized.int <- t(normalized_int)
 temp.normalized.int <- merge(temp.normalized.int,sidecols,by=0)
+
+sidecols <- data.frame(Client_Data_Download[["metadata"]] %>% select(colnames(Client_Data_Download[["metadata"]][2:ncol(Client_Data_Download[["metadata"]])]))) %>% select(contrast_var)
+
+#The code below can be resurrected if we decide to label more than one contrast_var, but currently the code above only selected a single contrast_var to annotate 
 #Everything else was commented out for a dataset with > 1 metadata, but is it even needed for 1 metadata? Check ASAP
-sidecols <- temp.normalized.int[,c(1,(ncol(temp.normalized.int)-(num_of_metadata-2)):ncol(temp.normalized.int))] #What was this for
+#sidecols <- temp.normalized.int[,c(1,(ncol(temp.normalized.int)-(num_of_metadata-2)):ncol(temp.normalized.int))] #What was this for
 ##arrange the sidecols by the colnames in 
-rownames(sidecols) <- sidecols$Row.names
-sidecols <- data.frame(sidecols[,-1])
-colnames(sidecols) <- colnames(Client_Data_Download[["metadata"]][2:ncol(Client_Data_Download[["metadata"]])])
+#rownames(sidecols) <- sidecols$Row.names
+#sidecols <- data.frame(sidecols[,-1])
+#colnames(sidecols) <- colnames(Client_Data_Download[["metadata"]][2:ncol(Client_Data_Download[["metadata"]])])
+
 normalized_int <- data.frame(t(temp.normalized.int))
 colnames(normalized_int) <- normalized_int[1,]
 normalized_int <- normalized_int[-1,]
