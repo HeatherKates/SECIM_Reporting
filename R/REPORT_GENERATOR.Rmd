@@ -80,7 +80,7 @@ library(car)
 Client_Data_Download <- ReportInput
 
 #Difference in v3.3 from 3.2 is adding an if statement to pick whether to show padj or p
-if(test_type %in% c("anova", "lmm","repeated_measures_anova")){
+if(test_type %in% c("lmm","repeated_measures_anova")){
 if(nrow(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05)) > 10){
     p_type="adj.p.value"} else {
       p_type="p.value"}
@@ -96,6 +96,12 @@ if (test_type=="nostats"){
   p_type="log2FC"
   sig_knowns <- nrow(Client_Data_Download[["report_results"]] %>% filter(abs(log2FC)>0.58) %>% filter(Level==1)) 
 }
+if(test_type == "anova"){
+if(nrow(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05)) > 10){
+    p_type="adj.p.value"} else {
+      p_type="adj.p.value"} #anova with emmeans will only have adj p value bc it's adjusted for multiple contrasts
+sig_knowns <- nrow(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05) %>% filter(Level==1)) 
+} 
 ```
 
 ```{r,eval=TRUE}
@@ -338,8 +344,8 @@ Principal component analysis of untargeted metabolomics data. Two-dimensional PC
 ```{r}
 if(batch_correct %in% c("limma","ComBat")){
 #We want to remove the metadata row(s) and all non sample cols from Client_Data_Download
- PCA_DATA <- t(rbind(Client_Data_Download_out[["Neg.normalized.data"]][,3:(num_samples+2)],
- Client_Data_Download_out[["Pos.normalized.data"]][-(1:num_of_metadata-1),3:(num_samples+2)]))
+ PCA_DATA <- t(rbind(Client_Data_Download_out[["Neg.processed.data"]][,3:(num_samples+2)],
+ Client_Data_Download_out[["Pos.processed.data"]][-(1:num_of_metadata-1),3:(num_samples+2)]))
 
 numsonly <- data.frame(PCA_DATA[,-c(1:num_of_metadata-1)])
 #Make numeric
@@ -352,8 +358,8 @@ scores <- pca_res$x
 colors <- RColorBrewer::brewer.pal(num_batches, "Set1")
 # Function to plot ellipse for each target
 plot_ellipse_function <- function(target) {
-  target_data <- as.data.frame(scores[PCA_DATA[,3] == target, 1:2])
-  target_color <- colors[which(unique(PCA_DATA[,3]) == target)]
+  target_data <- as.data.frame(scores[PCA_DATA[,(num_of_metadata-1)] == target, 1:2])
+  target_color <- colors[which(unique(PCA_DATA[,(num_of_metadata-1)]) == target)]
   
   # Ellipse
   ellipse_coords <- car::dataEllipse(target_data$PC1, target_data$PC2, 
@@ -370,9 +376,9 @@ plot_ellipse_function <- function(target) {
 
 # Function to plot points for each target
 plot_points_function <- function(target) {
-  target_data <- as.data.frame(scores[PCA_DATA[,3] == target, 1:2])
-  rownames(target_data) <- rownames(PCA_DATA)[PCA_DATA[,3]==target]
-  target_color <- colors[which(unique(PCA_DATA[,3]) == target)]
+  target_data <- as.data.frame(scores[PCA_DATA[,(num_of_metadata-1)] == target, 1:2])
+  rownames(target_data) <- rownames(PCA_DATA)[PCA_DATA[,(num_of_metadata-1)]==target]
+  target_color <- colors[which(unique(PCA_DATA[,(num_of_metadata-1)]) == target)]
   
   text_data <- as.character(rownames(target_data))
   PC1 <- as.numeric(target_data$PC1)
@@ -393,10 +399,10 @@ plot_points_function <- function(target) {
 fig <- plot_ly()
 
 # First loop: Plot all ellipses
-invisible(lapply(unique(PCA_DATA[,3]), plot_ellipse_function))
+invisible(lapply(unique(PCA_DATA[,(num_of_metadata-1)]), plot_ellipse_function))
 
 # Second loop: Plot all points
-invisible(lapply(unique(PCA_DATA[,3]), plot_points_function))
+invisible(lapply(unique(PCA_DATA[,(num_of_metadata-1)]), plot_points_function))
 
 fig
 }
