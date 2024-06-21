@@ -498,8 +498,8 @@ if (test_type=="nostats") {
     temp.HP.names <- combined_results %>% filter(status=="HP") %>% filter(is.na(KEGG)) %>% dplyr::arrange(temp.lc.Metabolite,Level,desc(log2FC))%>% distinct(temp.lc.Metabolite, .keep_all = TRUE)
     #For cases when 1+ of the duplicates does not have a confidence level "1"
     temp.notHP.names <- combined_results %>% filter(is.na(status)) %>% dplyr::arrange(temp.lc.Metabolite,plyr::desc(mz.match.score),desc(log2FC)) %>% distinct(temp.lc.Metabolite, .keep_all = TRUE)
-    } 
-if (test_type %in% c("anova","lm","lme")){
+} 
+if (test_type %in% c("lm","lme")){
     #For cases when 1+ of the duplicate KEGG IDs has a confidence level "1", pick the one with conf level 1 (then sort by p-value)
     temp.HP.Keggs <- combined_results %>% filter(status=="HP") %>% dplyr::arrange(KEGG,Level,p.value) %>% distinct(KEGG, .keep_all = TRUE)
     #For cases when 1+ of the duplicates does not have a confidence level "1", pick the best match and then the best p-value
@@ -510,7 +510,19 @@ if (test_type %in% c("anova","lm","lme")){
     temp.HP.names <- combined_results %>% filter(status=="HP") %>% filter(is.na(KEGG)) %>% dplyr::arrange(temp.lc.Metabolite,Level,p.value)%>% distinct(temp.lc.Metabolite, .keep_all = TRUE)
     #For cases when 1+ of the duplicates does not have a confidence level "1"
     temp.notHP.names <- combined_results %>% filter(is.na(status)) %>% dplyr::arrange(temp.lc.Metabolite,plyr::desc(mz.match.score),p.value) %>% distinct(temp.lc.Metabolite, .keep_all = TRUE)
-    }
+}
+if (test_type == "anova"){
+  #For cases when 1+ of the duplicate KEGG IDs has a confidence level "1", pick the one with conf level 1 (then sort by p-value)
+  temp.HP.Keggs <- combined_results %>% filter(status=="HP") %>% dplyr::arrange(KEGG,Level,adj.p.value) %>% distinct(KEGG, .keep_all = TRUE)
+  #For cases when 1+ of the duplicates does not have a confidence level "1", pick the best match and then the best p-value
+  temp.notHP.Keggs <- combined_results %>% filter(is.na(status)) %>% filter(!is.na(KEGG)) %>% dplyr::arrange(KEGG,plyr::desc(mz.match.score),adj.p.value) %>% distinct(KEGG, .keep_all = TRUE)
+  
+  #For peaks with Compound.names but no KEGG IDs
+  #For cases when 1+ of the duplicates has a confidence level "1"
+  temp.HP.names <- combined_results %>% filter(status=="HP") %>% filter(is.na(KEGG)) %>% dplyr::arrange(temp.lc.Metabolite,Level,adj.p.value)%>% distinct(temp.lc.Metabolite, .keep_all = TRUE)
+  #For cases when 1+ of the duplicates does not have a confidence level "1"
+  temp.notHP.names <- combined_results %>% filter(is.na(status)) %>% dplyr::arrange(temp.lc.Metabolite,plyr::desc(mz.match.score),adj.p.value) %>% distinct(temp.lc.Metabolite, .keep_all = TRUE)
+}
 #Put them back together
 combined_results <- rbind(temp.HP.Keggs,temp.notHP.Keggs,temp.HP.names,temp.notHP.names) %>% dplyr::select(-status)%>% dplyr::select(-temp.lc.Metabolite) %>% distinct()
 combined_results <- combined_results %>% mutate(Confidence=case_when(Level==3~"LOW CONFIDENCE ID",.default=""))
