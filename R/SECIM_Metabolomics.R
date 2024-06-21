@@ -64,7 +64,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   mSet<-FilterVariable(mSet, filter="iqr", "F", 10)
   #Normalization
   mSet<-PreparePrenormData(mSet)
-  mSet<-Normalization(mSet, rowNorm=rowNorm, transNorm=transNorm, scaleNorm=transNorm, ratio=FALSE, ratioNum=20)
+  mSet<-Normalization(mSet, rowNorm=rowNorm, transNorm=transNorm, scaleNorm=scaleNorm, ratio=FALSE, ratioNum=20)
   proc.data <- qread("data_proc.qs") #for plotting
   norm.data <- qread("complete_norm.qs") #for plotting
   
@@ -122,7 +122,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   #Batch correction with 
   if (batch_correct=="ComBat"){
     # Extracting batch information
-    batch_info <- as.numeric(data.final[3, -1])  # Assuming the third row contains batch information and excluding the 'id' column
+    batch_info <- as.numeric(data.final[num_meta, -1])  # Assuming the third row contains batch information and excluding the 'id' column
     
     # Extracting and preparing the matrix for ComBat
     data_matrix <- as.matrix(data.final[-(1:num_meta), -1])  # Excludes the first three rows (metadata) and the first column ('id')
