@@ -1,4 +1,4 @@
-Generate_Report_Inputs <-function(client,samples_to_drop=NULL,mzmine_version,ReferenceLevel=NULL,Input,contrast_var,
+Generate_Report_Inputs <-function(client,samples_to_drop_pre_norm=NULL,mzmine_version,ReferenceLevel=NULL,Input,contrast_var,
                                   num_meta,SECIM_column,anova_formula=NULL,lm_model=NULL,test_type,subset=NULL,metid_DB_file,
                                   paired=paired,batch_correct=batch_correct,rowNorm="SumNorm",transNorm="LogNorm",scaleNorm="ParetoNorm"){
   
@@ -9,7 +9,7 @@ Generate_Report_Inputs <-function(client,samples_to_drop=NULL,mzmine_version,Ref
   #scaleNorm	
   #Select option for scaling the data, "MeanCenter" for Mean Centering, "AutoNorm" for Autoscaling, "ParetoNorm" for Pareto Scaling, and "RangeNorm" for Range Scaling.
   #client="Dudeja.Serum"
-  #samples_to_drop=c("")
+  #samples_to_drop_pre_norm=c("")
   #mzmine_version=2
   #ReferenceLevel="WT"
   #Input <- "Client_Input_Sheets/Dudeja-Metabolomics_Serum.xlsx" 
@@ -171,9 +171,9 @@ if(!is.null(ReferenceLevel)){
     metadata$Class <- gsub(ReferenceLevel,paste0("Zref_",ReferenceLevel),metadata$Class)
 }
 
-if (length(samples_to_drop)>0){
-  samples_to_drop <- gsub("-","_",samples_to_drop)
-  metadata <- metadata %>% filter(!Sample.Name %in% samples_to_drop)
+if (length(samples_to_drop_pre_norm)>0){
+  samples_to_drop_pre_norm <- gsub("-","_",samples_to_drop_pre_norm)
+  metadata <- metadata %>% filter(!Sample.Name %in% samples_to_drop_pre_norm)
 }
 
 #################################################
@@ -373,8 +373,8 @@ if(!is.null(ReferenceLevel)){
   metadata$Class <- gsub(ReferenceLevel,paste0("Zref_",ReferenceLevel),metadata$Class)
   }
 
-if (length(samples_to_drop)>0){
-  metadata <- metadata %>% filter(!Sample.Name %in% samples_to_drop)
+if (length(samples_to_drop_pre_norm)>0){
+  metadata <- metadata %>% filter(!Sample.Name %in% samples_to_drop_pre_norm)
   }
 
 #################################################
