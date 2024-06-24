@@ -152,7 +152,9 @@ Study Summary: `r StudySummary`
 
 ## Sample Information</span>
 
-The PI provided `r {nrow(Client_Data_Download$metadata %>% filter(!str_detect(Sample.name, "Pool")))}` `r SampleType`
+`r if(subset) {paste("This report is an analysis of", nrow(Client_Data_Download$metadata %>% filter(!str_detect(Sample.name, "Pool"))), SampleType, "as shown below. Classes with 0 samples were included in batch-correction and normalization but omitted from statistical analysis.")}`
+
+`r if (!subset) {paste("The PI provided", nrow(Client_Data_Download$metadata %>% filter(!str_detect(Sample.name, "Pool"))), SampleType)}`
 
 ```{r}
 datatable(data.frame(table(Client_Data_Download$metadata$Class)), 
