@@ -14,7 +14,7 @@
 SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_var,anova_formula,lm_model,
                               test_type,subset,SECIM_column,emmeans_var,mode,metid_DB_file,client,
                               metadata,paired=FALSE,batch_correct=NULL,
-                              rowNorm="SumNorm",transNorm="LogNorm",scaleNorm="ParetoNorm"){
+                              rowNorm="SumNorm",transNorm="LogNorm",scaleNorm="ParetoNorm",samples_to_drop_post_norm){
   
 
   # Store the names of objects in the global environment before loading the file
@@ -180,6 +180,17 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
     data.final <- data_final_corrected
     
   }
+  #After data.final has been created, create a data.final.subset that is just for the contrast of interest IF samples_to_drop_post_norm is not NULL
+  if(!is.null(samples_to_drop_post_norm)){
+  samples_to_drop_post_norm <- gsub("-","_",samples_to_drop_post_norm)
+  #save the total normalized data for PCA and download
+  data.final.total <- data.final
+  #Remove the samples to be dropped
+  data.final.subset <- data.final %>% select(!samples_to_drop_post_norm)
+  #Rename the subset data for compatibility with downstream code
+  data.final <- data.final.subset
+  }
+
   
   if (test_type=="t.test"){
     print(contrast_var)
@@ -538,100 +549,91 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   peak_annotation$mode <- mode
                             
   outputs_list <- list()
-  #Merge results with metabolite annotation and name the dataset to be saved with mode
-  if(test_type=="t.test"){
-    outputs_list[[1]] <- merge(ttest.results,peak_annotation,by="id",all.x=TRUE)
-    outputs_list[[1]]$contrast <- gsub("[()]", "",outputs_list[[1]]$contrast)
-    outputs_list[[1]] <- outputs_list[[1]] %>% inner_join(means_FC, 
-                                                          by=c('id', 'contrast'))
-    outputs_list[[1]] <- outputs_list[[1]] %>% relocate(contrast,compound)
-    outputs_list[[1]]$adj.p.value <- p.adjust(outputs_list[[1]]$p.value,method="fdr")
+  # Merge results with metabolite annotation and name the dataset to be saved with mode
+  if (test_type == "t.test") {
+    outputs_list[[1]] <- merge(ttest.results, peak_annotation, by = "id", all.x = TRUE)
+    outputs_list[[1]]$contrast <- gsub("[()]", "", outputs_list[[1]]$contrast)
+    outputs_list[[1]] <- outputs_list[[1]] %>% inner_join(means_FC, by = c('id', 'contrast'))
+    outputs_list[[1]] <- outputs_list[[1]] %>% relocate(contrast, compound)
+    outputs_list[[1]]$adj.p.value <- p.adjust(outputs_list[[1]]$p.value, method = "fdr")
     outputs_list[[1]] <- outputs_list[[1]] %>% relocate(adj.p.value, .after = p.value)
     outputs_list[[2]] <- print("Empty for t test")
-    
   } 
-  if (test_type %in% c("lm","anova","lme")){
-    outputs_list[[1]] <- merge(emmeans.results,peak_annotation,by="id",all.x=TRUE)
-    # In case emmeans adds "()" due to special chars
-    outputs_list[[1]]$contrast <- gsub("[()]", "",outputs_list[[1]]$contrast)
+  if (test_type %in% c("lm", "anova", "lme")) {
+    outputs_list[[1]] <- merge(emmeans.results, peak_annotation, by = "id", all.x = TRUE)
+    outputs_list[[1]]$contrast <- gsub("[()]", "", outputs_list[[1]]$contrast)
     
-    # Check the number of unique levels in emmeans.results$contrast
-    if(length(unique(emmeans.results$contrast)) > 1){
-      # More than one level, run the original processing
-      outputs_list[[1]] <- outputs_list[[1]] %>% inner_join(means_FC, by=c('id', 'contrast'))
-      outputs_list[[1]] <- outputs_list[[1]] %>% relocate(contrast,compound)
+    if (length(unique(emmeans.results$contrast)) > 1) {
+      outputs_list[[1]] <- outputs_list[[1]] %>% inner_join(means_FC, by = c('id', 'contrast'))
+      outputs_list[[1]] <- outputs_list[[1]] %>% relocate(contrast, compound)
     } else {
-      # Only one level, add the additional line for adjusting p-value
-      outputs_list[[1]]$adj.p.value <- p.adjust(outputs_list[[1]]$p.value, method="fdr")
-      # Assuming you still want to run these lines even if there's only one level
-      outputs_list[[1]] <- outputs_list[[1]] %>% inner_join(means_FC, by=c('id', 'contrast'))
-      outputs_list[[1]] <- outputs_list[[1]] %>% relocate(contrast,compound)
+      outputs_list[[1]]$adj.p.value <- p.adjust(outputs_list[[1]]$p.value, method = "fdr")
+      outputs_list[[1]] <- outputs_list[[1]] %>% inner_join(means_FC, by = c('id', 'contrast'))
+      outputs_list[[1]] <- outputs_list[[1]] %>% relocate(contrast, compound)
     }
     
-    outputs_list[[2]] <- merge(fit.results,peak_annotation,by="id",all.x=TRUE)
+    outputs_list[[2]] <- merge(fit.results, peak_annotation, by = "id", all.x = TRUE)
     outputs_list[[2]] <- outputs_list[[2]] %>% relocate(compound)
   }
   
-  if (test_type == "nostats"){
-  outputs_list[[1]] <- merge(means_FC,peak_annotation,by="id",all.x=TRUE)
-  outputs_list[[1]]$contrast <- gsub("[()]", "",outputs_list[[1]]$contrast)
-  outputs_list[[1]] <- outputs_list[[1]] %>% relocate(contrast,compound)
-  outputs_list[[2]] <- print("Empty for nostats")
+  if (test_type == "nostats") {
+    outputs_list[[1]] <- merge(means_FC, peak_annotation, by = "id", all.x = TRUE)
+    outputs_list[[1]]$contrast <- gsub("[()]", "", outputs_list[[1]]$contrast)
+    outputs_list[[1]] <- outputs_list[[1]] %>% relocate(contrast, compound)
+    outputs_list[[2]] <- print("Empty for nostats")
   }
-
-  #Merge filtered dataset with metabolite annotation
-  #outputs_list[[3]] <- merge(data.frame(t(proc.data)),peak_annotation,by.x=0,by.y="id",all.x=TRUE)
-  outputs_list[[3]] <- merge(data.proc,peak_annotation,by="id",all.x=TRUE)
-  outputs_list[[3]] <- outputs_list[[3]][c(which(outputs_list[[3]]$id  == "Class"), setdiff(seq_len(nrow(outputs_list[[3]])), which(outputs_list[[3]]$id == "Class"))),]
-  #Added in v 12.2 because for >1 metadata category, the above does not move the metadata rows to the top.
-  outputs_list[[3]] <- outputs_list[[3]][c(which(is.na(outputs_list[[3]]$id)), setdiff(seq_len(nrow(outputs_list[[3]])),
-                                                                                      which(is.na(outputs_list[[3]]$id)))),]
+  
+  outputs_list[[3]] <- merge(data.proc, peak_annotation, by = "id", all.x = TRUE)
+  outputs_list[[3]] <- outputs_list[[3]][c(which(outputs_list[[3]]$id == "Class"), setdiff(seq_len(nrow(outputs_list[[3]])), which(outputs_list[[3]]$id == "Class"))),]
+  outputs_list[[3]] <- outputs_list[[3]][c(which(is.na(outputs_list[[3]]$id)), setdiff(seq_len(nrow(outputs_list[[3]])), which(is.na(outputs_list[[3]]$id)))),]
   outputs_list[[3]] <- outputs_list[[3]] %>% relocate(compound)
   
-  outputs_list[[4]] <- merge(data.final,peak_annotation,by="id",all.x=TRUE)
-  outputs_list[[4]] <- outputs_list[[4]][c(which(outputs_list[[4]]$id  == "Class"), setdiff(seq_len(nrow(outputs_list[[4]])), which(outputs_list[[4]]$id == "Class"))),]
-  #Added in v 12.2 because for >1 metadata category, the above does not move the metadata rows to the top.
-  outputs_list[[4]] <- outputs_list[[4]][c(which(is.na(outputs_list[[4]]$id)), setdiff(seq_len(nrow(outputs_list[[4]])),
-                                                                                       which(is.na(outputs_list[[4]]$id)))),]
+  outputs_list[[4]] <- merge(data.final, peak_annotation, by = "id", all.x = TRUE)
+  outputs_list[[4]] <- outputs_list[[4]][c(which(outputs_list[[4]]$id == "Class"), setdiff(seq_len(nrow(outputs_list[[4]])), which(outputs_list[[4]]$id == "Class"))),]
+  outputs_list[[4]] <- outputs_list[[4]][c(which(is.na(outputs_list[[4]]$id)), setdiff(seq_len(nrow(outputs_list[[4]])), which(is.na(outputs_list[[4]]$id)))),]
   outputs_list[[4]] <- outputs_list[[4]] %>% relocate(compound)
   
-  #return plots
-  outputs_list[[5]] <- arrangeGrob(plots[["plot_env"]][["p1"]],plots[["plot_env"]][["p3"]],plots[["plot_env"]][["p2"]],plots[["plot_env"]][["p4"]],ncol=2,top=textGrob("Feature View"))
-  outputs_list[[6]] <- arrangeGrob(plots[["plot_env"]][["p5"]],plots[["plot_env"]][["p7"]],plots[["plot_env"]][["p6"]],plots[["plot_env"]][["p8"]],ncol=2,top=textGrob("Sample View"))
-  if(mode=="Neg"){
-  outputs_list[[7]] <- md
-  #name the lists
-  if(test_type=="t.test"){
-    names(outputs_list) <- c(paste0(mode,".ttest.metab"),paste0(mode,"Empty"),paste0(mode,".processed.data"),
-                             paste0(mode,".normalized.data"),paste0(mode,".FeatureView"),paste0(mode,".SampleView"),"metadata")
-  } 
-  if (test_type %in% c("anova","lm","lme")){
-    names(outputs_list) <- c(paste0(mode,".emmeans.results.metab"),paste0(mode,".fit.results.metab"),
-                             paste0(mode,".processed.data"),
-                             paste0(mode,".normalized.data"),paste0(mode,".FeatureView"),paste0(mode,".SampleView"),"metadata")
+  if (!is.null(samples_to_drop_post_norm)) {
+    outputs_list[[if (mode == "Neg") 8 else 7]] <- merge(data.final.total, peak_annotation, by = "id", all.x = TRUE)
+    outputs_list[[if (mode == "Neg") 8 else 7]] <- outputs_list[[if (mode == "Neg") 8 else 7]][c(which(outputs_list[[if (mode == "Neg") 8 else 7]]$id == "Class"), setdiff(seq_len(nrow(outputs_list[[if (mode == "Neg") 8 else 7]])), which(outputs_list[[if (mode == "Neg") 8 else 7]]$id == "Class"))),]
+    outputs_list[[if (mode == "Neg") 8 else 7]] <- outputs_list[[if (mode == "Neg") 8 else 7]][c(which(is.na(outputs_list[[if (mode == "Neg") 8 else 7]]$id)), setdiff(seq_len(nrow(outputs_list[[if (mode == "Neg") 8 else 7]])), which(is.na(outputs_list[[if (mode == "Neg") 8 else 7]]$id)))),]
+    outputs_list[[if (mode == "Neg") 8 else 7]] <- outputs_list[[if (mode == "Neg") 8 else 7]] %>% relocate(compound)
   }
-  if (test_type=="nostats"){
-    names(outputs_list) <- c(paste0(mode,".FCanlaysis.metab"),paste0(mode,"Empty"),paste0(mode,".processed.data"),
-                             paste0(mode,".normalized.data"),paste0(mode,".FeatureView"),paste0(mode,".SampleView"),"metadata") 
+  
+  outputs_list[[5]] <- arrangeGrob(plots[["plot_env"]][["p1"]], plots[["plot_env"]][["p3"]], plots[["plot_env"]][["p2"]], plots[["plot_env"]][["p4"]], ncol = 2, top = textGrob("Feature View"))
+  outputs_list[[6]] <- arrangeGrob(plots[["plot_env"]][["p5"]], plots[["plot_env"]][["p7"]], plots[["plot_env"]][["p6"]], plots[["plot_env"]][["p8"]], ncol = 2, top = textGrob("Sample View"))
+  
+  if (mode == "Neg") {
+    outputs_list[[7]] <- md %>% dplyr::filter(!rownames(.) %in% samples_to_drop_post_norm)
+    if (test_type == "t.test") {
+      names(outputs_list) <- c(paste0(mode, ".ttest.metab"), paste0(mode, "Empty"), paste0(mode, ".processed.data"),
+                               paste0(mode, ".normalized.data"), paste0(mode, ".FeatureView"), paste0(mode, ".SampleView"), "metadata", paste0(mode, ".total.normalized.data"))
+    } 
+    if (test_type %in% c("anova", "lm", "lme")) {
+      names(outputs_list) <- c(paste0(mode, ".emmeans.results.metab"), paste0(mode, ".fit.results.metab"),
+                               paste0(mode, ".processed.data"), paste0(mode, ".normalized.data"),
+                               paste0(mode, ".FeatureView"), paste0(mode, ".SampleView"), "metadata", paste0(mode, ".total.normalized.data"))
+    }
+    if (test_type == "nostats") {
+      names(outputs_list) <- c(paste0(mode, ".FCanlaysis.metab"), paste0(mode, "Empty"), paste0(mode, ".processed.data"),
+                               paste0(mode, ".normalized.data"), paste0(mode, ".FeatureView"), paste0(mode, ".SampleView"), "metadata", paste0(mode, ".total.normalized.data"))
+    }
+  } else {
+    if (test_type == "t.test") {
+      names(outputs_list) <- c(paste0(mode, ".ttest.metab"), paste0(mode, "Empty"), paste0(mode, ".processed.data"),
+                               paste0(mode, ".normalized.data"), paste0(mode, ".FeatureView"), paste0(mode, ".SampleView"), paste0(mode, ".total.normalized.data"))
+    }
+    if (test_type %in% c("anova", "lm", "lme")) {
+      names(outputs_list) <- c(paste0(mode, ".emmeans.results.metab"), paste0(mode, ".fit.results.metab"),
+                               paste0(mode, ".processed.data"), paste0(mode, ".normalized.data"),
+                               paste0(mode, ".FeatureView"), paste0(mode, ".SampleView"), paste0(mode, ".total.normalized.data"))
+    }
+    if (test_type == "nostats") {
+      names(outputs_list) <- c(paste0(mode, ".FCanlaysis.metab"), paste0(mode, "Empty"), paste0(mode, ".processed.data"),
+                               paste0(mode, ".normalized.data"), paste0(mode, ".FeatureView"), paste0(mode, ".SampleView"), paste0(mode, ".total.normalized.data"))
+    }
   }
-  }else{
-    
-    #name the lists
-    if(test_type=="t.test"){
-      names(outputs_list) <- c(paste0(mode,".ttest.metab"),paste0(mode,"Empty"),paste0(mode,".processed.data"),
-                               paste0(mode,".normalized.data"),paste0(mode,".FeatureView"),paste0(mode,".SampleView"))
-    }
-    if (test_type %in% c("anova","lm","lme")){
-      names(outputs_list) <- c(paste0(mode,".emmeans.results.metab"),paste0(mode,".fit.results.metab"),
-                               paste0(mode,".processed.data"),
-                               paste0(mode,".normalized.data"),paste0(mode,".FeatureView"),paste0(mode,".SampleView"))
-    }
-    if(test_type =="nostats"){
-      names(outputs_list) <- c(paste0(mode,".FCanlaysis.metab"),paste0(mode,"Empty"),paste0(mode,".processed.data"),
-                               paste0(mode,".normalized.data"),paste0(mode,".FeatureView"),paste0(mode,".SampleView")) 
-    }
-    
-  }
+  
   return(outputs_list)
 }
 # List of files to remove
