@@ -254,10 +254,14 @@ dataset <- data
 #options for metid_DB are kegg_ms1_database0.0.3.rda,"hmdb_database0.0.3.rda,"bloodexposome_database1.0.rda"
 #Example of anova_formula=as.formula(paste("Metabolite ~", "Class","+","Error(ID)"))
 #debug(SECIM_Metabolomics)
-neg.output <- SECIM_Metabolomics(dataset=data,peakdata=peakdata,num_meta=num_meta,original_data=data,contrast_var=contrast_var,
+neg.output <- SECIM_Metabolomics(dataset=data,peakdata=peakdata,num_meta=num_meta,
+                                 original_data=data,contrast_var=contrast_var,
   subset=subset,
-  anova_formula=anova_formula,SECIM_column=SECIM_column,lm_model=lm_model,test_type=test_type,emmeans_var=contrast_var,mode="Neg",
-  metid_DB_file=metid_DB_file,client=client,metadata=metadata,paired=paired,batch_correct=batch_correct,samples_to_drop_post_norm = samples_to_drop_post_norm)
+  anova_formula=anova_formula,SECIM_column=SECIM_column,lm_model=lm_model,test_type=test_type,
+  emmeans_var=contrast_var,mode="Neg",
+  metid_DB_file=metid_DB_file,client=client,metadata=metadata,paired=paired,
+  batch_correct=batch_correct,samples_to_drop_post_norm = samples_to_drop_post_norm,
+  rowNorm=rowNorm, transNorm=transNorm, scaleNorm=scaleNorm)
 
 #Positive mode
 
@@ -455,13 +459,14 @@ pos.output <- SECIM_Metabolomics(
   subset=subset,
   anova_formula=anova_formula,SECIM_column=SECIM_column,lm_model=lm_model,test_type=test_type,emmeans_var=contrast_var,mode="Pos",
   metid_DB_file=metid_DB_file,client=client,metadata=metadata,paired=paired,batch_correct=batch_correct,
-  samples_to_drop_post_norm = samples_to_drop_post_norm)
+  samples_to_drop_post_norm = samples_to_drop_post_norm,
+  rowNorm=rowNorm, transNorm=transNorm, scaleNorm=scaleNorm)
 
 #save.image(paste(client,"functionoutput.RDATA",sep="_"))
 #################################################
 #################END#############################
 #################################################
-browser()
+#browser()
 if(!is.null(samples_to_drop_post_norm)){
 samples_to_drop_post_norm <- gsub("-","_",samples_to_drop_post_norm)
 metadata <- metadata %>% dplyr::filter(!Sample.Name %in% samples_to_drop_post_norm)
