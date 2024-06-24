@@ -76,7 +76,6 @@ library(car)
 ```
 
 ```{r}
-#source("Report_params.template.R") #Get variables
 Client_Data_Download <- ReportInput
 
 #Difference in v3.3 from 3.2 is adding an if statement to pick whether to show padj or p
@@ -1316,9 +1315,9 @@ normalized_int <- filter(normalized_int, rownames(normalized_int) %in% top20_sig
 normalized_int <- mutate_all(normalized_int, function(x) as.numeric(as.character(x)))
 
 temp.normalized.int <- t(normalized_int)
-temp.normalized.int <- merge(temp.normalized.int,sidecols,by=0)
 
 sidecols <- data.frame(Client_Data_Download[["metadata"]] %>% select(colnames(Client_Data_Download[["metadata"]][2:ncol(Client_Data_Download[["metadata"]])]))) %>% select(contrast_var)
+temp.normalized.int <- merge(temp.normalized.int,sidecols,by=0)
 
 #The code below can be resurrected if we decide to label more than one contrast_var, but currently the code above only selected a single contrast_var to annotate 
 #Everything else was commented out for a dataset with > 1 metadata, but is it even needed for 1 metadata? Check ASAP
