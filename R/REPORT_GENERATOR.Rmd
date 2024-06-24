@@ -106,16 +106,17 @@ sig_knowns <- nrow(Client_Data_Download[["report_results"]] %>% filter(adj.p.val
 
 ```{r,eval=TRUE}
 #If we need to remove dummy prefixes for contrast ordering
-# Assuming Client_Data_Download is your list of data frames
-
 # Function to clean column names and data within the data frame
 clean_data <- function(df) {
   colnames(df) <- gsub("Zref_", "", colnames(df))
   df[] <- lapply(df, function(x) {
     if (is.character(x)) {
-      gsub("Zref_", "", x)
+      return(gsub("Zref_", "", x))
+    } else if (is.factor(x)) {
+      levels(x) <- gsub("Zref_", "", levels(x))
+      return(x)
     } else {
-      x
+      return(x)
     }
   })
   return(df)
@@ -127,6 +128,7 @@ for (i in 1:length(Client_Data_Download)) {
     Client_Data_Download[[i]] <- clean_data(Client_Data_Download[[i]])
   }
 }
+
 #Set a class order
 class_order <- levels(as.factor(Client_Data_Download[["metadata"]]$Class))
 ```
@@ -251,17 +253,25 @@ Client_Data_Download_out %>%
 ```
 
 ```{r}
-if(test_type %in% c("t.test","nostats")){for (i in c(1:4,7:9)){
-  tryCatch({
-Client_Data_Download[[i]] <- type.convert(Client_Data_Download[[i]], as.is = TRUE)
-})
-}}else{
-for (i in c(1:5,8:11)){
-  tryCatch({
-Client_Data_Download[[i]] <- type.convert(Client_Data_Download[[i]], as.is = TRUE)
-})
+# Function to check if an element is a data frame and apply type.convert
+convert_if_dataframe <- function(df) {
+  if (is.data.frame(df)) {
+    return(type.convert(df, as.is = TRUE))
+  } else {
+    return(df)
+  }
 }
+
+# Apply the function to each element in the list
+for (i in seq_along(Client_Data_Download)) {
+  tryCatch({
+    Client_Data_Download[[i]] <- convert_if_dataframe(Client_Data_Download[[i]])
+  }, error = function(e) {
+    # Handle any errors (optional)
+    message("Error in type conversion for element ", i, ": ", e)
+  })
 }
+
 ```
 
 ## Global metabolomics profiling</span>
