@@ -122,7 +122,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   #Batch correction with 
   if (batch_correct=="ComBat"){
     # Extracting batch information
-    batch_info <- as.numeric(data.final[num_meta, -1])  # Assuming the third row contains batch information and excluding the 'id' column
+    batch_info <- as.numeric(data.final[num_meta, -1])  # Assuming the last row of metadata contains batch information and excluding the 'id' column
     
     # Extracting and preparing the matrix for ComBat
     data_matrix <- as.matrix(data.final[-(1:num_meta), -1])  # Excludes the first three rows (metadata) and the first column ('id')
@@ -190,7 +190,6 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   #Rename the subset data for compatibility with downstream code
   data.final <- data.final.subset
   }
-
   
   if (test_type=="t.test"){
     print(contrast_var)
