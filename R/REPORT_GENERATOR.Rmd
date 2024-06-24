@@ -408,11 +408,17 @@ pre_data <- list(
   Neg = Client_Data_Download_out[["Neg.processed.data"]],
   Pos = Client_Data_Download_out[["Pos.processed.data"]]
 )
-
+if(subset==TRUE){
 post_data <- list(
+  Neg = Client_Data_Download_out[["Neg.total.normalized.data"]],
+  Pos = Client_Data_Download_out[["Pos.total.normalized.data"]]
+)
+} else {
+  post_data <- list(
   Neg = Client_Data_Download_out[["Neg.normalized.data"]],
   Pos = Client_Data_Download_out[["Pos.normalized.data"]]
 )
+}
 
 pre_plot <- plot_pca(pre_data, show_legend = TRUE)
 post_plot <- plot_pca(post_data, show_legend = FALSE)
