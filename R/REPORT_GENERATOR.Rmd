@@ -229,7 +229,10 @@ contrasts <- levels(as.factor(Client_Data_Download[["report_results"]]$contrast)
 #Remove the last two because they're the plots
 Client_Data_Download_out <- Client_Data_Download
 if(test_type=="t.test"){
-Client_Data_Download_out[["README"]] <- read.csv("../InputFiles/ttest.README.csv")
+  if(subset){
+    Client_Data_Download_out[["README"]] <- read.csv("../InputFiles/ttest.batchCorrect.README.csv")}else{
+    Client_Data_Download_out[["README"]] <- read.csv("../InputFiles/ttest.README.csv")
+  }
 }
 if(test_type %in% c("anova", "lmm","repeated_measures_anova","lme")){
 Client_Data_Download_out[["README"]] <- read.csv("../InputFiles/ANOVA.emmeans.README.csv")
@@ -295,13 +298,15 @@ MZmine (freeware) was used to identify features, deisotope, and align features. 
 
 Missing data were imputed by k-nearest neighbor imputation as implemented in the R package MetaboAnalystR (https://github.com/xia-lab/MetaboAnalystR).
 
+## Normalization Method
+
 `r if(norm_method=="vst"){"Peak intensities were normalized using the variance stabilizing transformation using the R package MetaboDiff (Mock et al. 2018)."}`
 
 `r if(norm_method=="median"){"Peak intensities were normalized using the median method of normalization as implemented the R package MSPrep (McGrath M et al. 2022)."}`
 
 `r if(norm_method=="quantile"){"Peak intensities were normalized using the quantile method of normalization as implemented the R package MSPrep (McGrath M et al. 2022)."}`
 
-`r if(norm_method=="Sum"){"Peak intensities were normalized sample-wise using sum normalization followed by log (base 10) transformation and Pareto scaling as implemented R package MetaboAnalystR (https://github.com/xia-lab/MetaboAnalystR). Please note that this method of normalization results in negative values and these are expected in your normalized dataset."}`
+`r if (norm_method=="MetaboanalystR"){rowNorm <- rowNorm; transNorm <- transNorm; scaleNorm <- scaleNorm;rowNormText <- switch(rowNorm, "QuantileNorm" = "Quantile normalization", "CompNorm" = "Normalization by a reference feature", "SumNorm" = "Normalization to constant sum", "MedianNorm" = "Normalization to sample median", "SpecNorm" = "Normalization by a sample-specific factor", "none" = NULL); transNormText <- switch(transNorm, "LogNorm" = "log (base 10) transformation", "CrNorm" = "cubic root transformation", "none" = NULL); scaleNormText <- switch(scaleNorm, "MeanCenter" = "mean centering", "AutoNorm" = "autoscaling", "ParetoNorm" = "Pareto scaling", "RangeNorm" = "range scaling", "none" = NULL); normalizationText <- paste(if (!is.null(rowNormText)) paste("Peak intensities were normalized sample-wise using", rowNormText) else NULL, if (!is.null(transNormText)) paste("followed by", transNormText) else NULL, if (!is.null(scaleNormText)) paste("and", scaleNormText) else NULL, "as implemented in the R package MetaboAnalystR (https://github.com/xia-lab/MetaboAnalystR).", "Please note that this method of normalization results in negative values and these are expected in your normalized dataset."); normalizationText}`
 
 `r if(batch_correct=="ComBat"){"Peak intensities were batch-corrected using the ComBat function from the R package sva (Leek JT et al. 2022) "}`
 
