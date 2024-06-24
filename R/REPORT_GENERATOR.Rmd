@@ -342,6 +342,8 @@ Following analysis of all compounds detected in positive and negative ionization
 
 Principal component analysis of untargeted metabolomics data. Two-dimensional PCA score plots reveal possible separation in metabolite profiles related to variables of interest. Ellipses are calculated using the R package car (Fox J. and Weisberg S. 2019) and ~1 Std dev.
 
+`r if(subset) {cat("**PCA of all study samples that were included in batch-correction and normalization prior to statistical analysis, colored by batch.**")}`
+
 ```{r}
 if(batch_correct %in% c("limma","ComBat")){
 library(plotly)
@@ -453,6 +455,8 @@ combined_plot <- combined_plot %>%layout(annotations = annotations)
 combined_plot
 }
 ```
+
+`r if(subset) {cat("**PCA of samples included in statistical analysis, colored by group.**")}`
 
 ```{r}
 #We want to remove the metadata row(s) and all non sample cols from Client_Data_Download
