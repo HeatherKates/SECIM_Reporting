@@ -1,4 +1,4 @@
-Generate_Report_Inputs <-function(client,samples_to_drop_pre_norm=NULL,mzmine_version,ReferenceLevel=NULL,Input,contrast_var,
+Generate_Report_Inputs <-function(client,samples_to_drop_pre_norm=NULL,samples_to_drop_post_norm=NULL,mzmine_version,ReferenceLevel=NULL,Input,contrast_var,
                                   num_meta,SECIM_column,anova_formula=NULL,lm_model=NULL,test_type,subset=NULL,metid_DB_file,
                                   paired=paired,batch_correct=batch_correct,rowNorm="SumNorm",transNorm="LogNorm",scaleNorm="ParetoNorm"){
   
@@ -257,7 +257,7 @@ dataset <- data
 neg.output <- SECIM_Metabolomics(dataset=data,peakdata=peakdata,num_meta=num_meta,original_data=data,contrast_var=contrast_var,
   subset=subset,
   anova_formula=anova_formula,SECIM_column=SECIM_column,lm_model=lm_model,test_type=test_type,emmeans_var=contrast_var,mode="Neg",
-  metid_DB_file=metid_DB_file,client=client,metadata=metadata,paired=paired,batch_correct=batch_correct)
+  metid_DB_file=metid_DB_file,client=client,metadata=metadata,paired=paired,batch_correct=batch_correct,samples_to_drop_post_norm = samples_to_drop_post_norm)
 
 #Positive mode
 
@@ -454,13 +454,18 @@ pos.output <- SECIM_Metabolomics(
   dataset=data,peakdata=peakdata,num_meta=num_meta,original_data=data,contrast_var=contrast_var,
   subset=subset,
   anova_formula=anova_formula,SECIM_column=SECIM_column,lm_model=lm_model,test_type=test_type,emmeans_var=contrast_var,mode="Pos",
-  metid_DB_file=metid_DB_file,client=client,metadata=metadata,paired=paired,batch_correct=batch_correct)
+  metid_DB_file=metid_DB_file,client=client,metadata=metadata,paired=paired,batch_correct=batch_correct,
+  samples_to_drop_post_norm = samples_to_drop_post_norm)
 
 #save.image(paste(client,"functionoutput.RDATA",sep="_"))
 #################################################
 #################END#############################
 #################################################
-
+browser()
+if(!is.null(samples_to_drop_post_norm)){
+samples_to_drop_post_norm <- gsub("-","_",samples_to_drop_post_norm)
+metadata <- metadata %>% dplyr::filter(!Sample.Name %in% samples_to_drop_post_norm)
+}
 
 #Reduce the pos and neg results combined to representative peaks per compound
 combined_results <- rbind(neg.output[[1]],pos.output[[1]])
