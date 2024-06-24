@@ -106,38 +106,28 @@ sig_knowns <- nrow(Client_Data_Download[["report_results"]] %>% filter(adj.p.val
 
 ```{r,eval=TRUE}
 #If we need to remove dummy prefixes for contrast ordering
-#could be in a column name or a value in the column called contrast
-#"AATD_ZZ"                "COPD"                   "Zref_Control_MM" 
-#Removes the dummy prefix if it's in the colnames a df - if there is > metadata, might need to change
-for (i in 1:length(Client_Data_Download)) {
-  tryCatch({
-    colnames(Client_Data_Download[[i]]) <- gsub("Zref_", "", colnames(Client_Data_Download[[i]]))
-    
-    # Loop through the metadata rows and replace strings
-    for (j in 1:num_of_metadata) {
-      Client_Data_Download[[i]][,j ] <- gsub("Zref_", "", Client_Data_Download[[i]][,j ])
+# Assuming Client_Data_Download is your list of data frames
+
+# Function to clean column names and data within the data frame
+clean_data <- function(df) {
+  colnames(df) <- gsub("Zref_", "", colnames(df))
+  df[] <- lapply(df, function(x) {
+    if (is.character(x)) {
+      gsub("Zref_", "", x)
+    } else {
+      x
     }
-  }, error = function(e) {
   })
-}
-#Removes the dummy prefix if it's in the first row of a df - if there is > metadata, might need to change
-for (i in c(1:length(Client_Data_Download))){
-  tryCatch({
-Client_Data_Download[[i]][1,]<- gsub("[A-Za-z]ref_","",Client_Data_Download[[i]][1,])
-  }, error = function(e) {
-  })
+  return(df)
 }
 
-for (i in c(1:length(Client_Data_Download))){
-  tryCatch({
-Client_Data_Download[[i]]$contrast <- gsub("Zref_","",Client_Data_Download[[i]]$contrast)
-    Client_Data_Download[[i]]$contrast <- gsub("[A-Za-z]ref_","",Client_Data_Download[[i]]$contrast)
-  }, error = function(e) {
-  })
+# Apply the function to each element in the list if it's a data frame
+for (i in 1:length(Client_Data_Download)) {
+  if (is.data.frame(Client_Data_Download[[i]])) {
+    Client_Data_Download[[i]] <- clean_data(Client_Data_Download[[i]])
+  }
 }
-
-Client_Data_Download[["metadata"]]$Class <- gsub("Zref_","",Client_Data_Download[["metadata"]]$Class)
-Client_Data_Download[["metadata"]]$Class <- gsub("[A-Za-z]ref_","",Client_Data_Download[[i]]$Class)
+#Set a class order
 class_order <- levels(as.factor(Client_Data_Download[["metadata"]]$Class))
 ```
 
