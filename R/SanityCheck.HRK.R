@@ -122,6 +122,7 @@ SanityCheckDataHRK <- function(mSetObj=NA){
       }
       
       # allow it pass to sanity check and correct there
+      if (FALSE) {
       if(anal.type != "network" & anal.type != "mf"){ # add exception for DSPC correlation network 
         if(min(table(cls.Clean)) < 2 | length(levels(cls.Clean)) < 2){
           AddErrMsg(paste ("A total of", length(levels(cls.Clean)), "groups found with", length(cls.Clean), "samples."));
@@ -134,7 +135,8 @@ SanityCheckDataHRK <- function(mSetObj=NA){
             return(-1);
           }
         }
-      } else if(anal.type == "mf"){
+      }
+    } else if(anal.type == "mf"){
         if(min(table(cls.Clean)) < 3 | length(levels(cls.Clean)) < 2){
           msg <- c(msg, paste ("A total of", length(levels(cls.Clean)), "groups found with", length(cls.Clean), "samples."));
           msg <- c(msg, "The primary factor is highly possible a continuous variable.")
