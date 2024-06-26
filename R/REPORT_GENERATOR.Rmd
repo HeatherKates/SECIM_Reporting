@@ -1122,6 +1122,8 @@ rownames(normalized_int) <- c(paste(Client_Data_Download[["Pos.normalized.data"]
 
 normalized_int <- filter(normalized_int, rownames(normalized_int) %in% top20_sigOE_genes)
 
+rownames(normalized_int ) <- gsub("^\\d+_(Pos|Neg)_", "", rownames(normalized_int))
+
 #The boxplot data frame is samples in rows metabs in cols, the normalized intensities for each sample preceded by the name and any metadata for that sample
 my.df <- t(normalized_int)
 
