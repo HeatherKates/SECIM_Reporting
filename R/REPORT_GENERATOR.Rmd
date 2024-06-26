@@ -1384,220 +1384,93 @@ KEGG analysis was performed with the R package FELLA (https://bmcbioinformatics.
 **If your study/contrast yielded > 20 significantly changed compounds with high-confidence IDs, only high-confidence IDs are included as input compounds.**
 
 ```{r}
-if(test_type == "nostats"){
-  html_text <- "The most changed (log2FC) compounds input into the KEGG subnetwork analysis are shown with red squares (see key) and are drawn in their KEGG subnetwork.<br><br> Hover over nodes to view annotation and to see the confidence of our identification of a particular input KEGG compound.<br>(If no subnetworks are visible below, there were no >1.5 log2FC changed metabolites with KEGG IDs.)<br><br>"
-} else {
-  html_text <- "The significantly changed compounds input into the KEGG subnetwork analysis are shown with red squares (see key) and are drawn in their KEGG subnetwork.<br><br> Hover over nodes to view annotation and to see the confidence of our identification of a particular input KEGG compound.<br> (If no subnetworks are visible below, there were no significantly changed metabolites with KEGG IDs.)<br><br>"
+library(KEGGREST)
+library(pathview)
+
+# Set output directory
+output_dir <- "/blue/timgarrett/hkates/SECIM_Reporting/Deletable"
+
+# Ensure the output directory exists
+if (!dir.exists(output_dir)) {
+  dir.create(output_dir, recursive = TRUE)
 }
-htmltools::HTML(html_text)
-```
 
-Select areas of within this subnetwork to view and export clusters of interest. 
-
-```{r,warning=FALSE,message=FALSE,include=FALSE,eval=TRUE}
-# Building the database ("graph") from KEGG - pathways can be filtered here
-#This is from Step0_BuildJEGGDB.R but is not data-dependent
-load("../InputFiles/KEGG_network.RDATA")
-```
-
-```{r,network,eval=TRUE,error=TRUE,warning=FALSE,message=FALSE,fig.dim=c(40,40)}
-vars_created <- c("axis.up", "edge_shape", "edge_shapes", "edge_shapes.up", "es.up", "final_vars", 
-                  "KEGG_map", "L.up", "message_text", "Ne.up", "network.up", "node.data.up", 
-                  "Nv.up", "sig.up.KEGGs.up", "up.graph", "up.plot.up", "v0", "v1", "vars_created", 
-                  "vs.names.KEGG.confidence.2.up", "vs.names.KEGG.confidence.up", "vs.names.KEGG.up", 
-                  "vs.names.up", "vs.up", "Xn.up", "Yn.up", "analysis.up", "upnetworklist","upnetwork",
-                  "axis.down", "edge_shapes.down", "es.down", "L.down", "Ne.down", "network.down", "node.data.down", 
-                  "Nv.down", "sig.down.KEGGs.down", "down.graph", "down.plot.down", 
-                  "vs.names.KEGG.confidence.2.down", "vs.names.KEGG.confidence.down", "vs.names.KEGG.down", 
-                  "vs.names.down", "vs.down", "Xn.down", "Yn.down", "analysis.down", "downnetworklist","downnetwork")
-# Create a list of named lists
-network_data <- setNames(vector("list", length(vars_created)), vars_created)
-
-# Fill each named list with NULLs based on the length of 'var'
-network_data <- lapply(network_data, function(x) {
-    x <- vector("list", length(contrasts))
-    for (i in seq_along(x)) {
-        x[[i]] <- NULL
-    }
-    return(x)
-})
-
-elements_list <- setNames(replicate(length(contrasts), NULL, simplify = FALSE),
-                          paste0("element", 1:length(contrasts)))
-
-network_data <- setNames(
-  lapply(vars_created, function(x) elements_list),
-  vars_created
-)
-
-for (i in 1:length(contrasts)){
-  #UP network
-  
-  #Make a list of significant KEGG compounds
-  if(sig_knowns < 20){
-  network_data[["sig.up.KEGGs.up"]][[i]] <- Client_Data_Download[["report_results"]] %>% 
-    filter(contrast==contrasts[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>%
-           filter(log2FC > 0) %>% 
-           dplyr::select(KEGG) %>% filter(!KEGG=="")} else{
-        network_data[["sig.up.KEGGs.up"]][[i]] <- Client_Data_Download[["report_results"]] %>% 
-    filter(contrast==contrasts[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>%
-           filter(log2FC > 0) %>% filter(Level==1) %>%
-           dplyr::select(KEGG) %>% filter(!KEGG=="")
-           }
-  
-  #If statement #1: Only run the enrich function if there are significant KEGGs to input (otherwise there'd be an error)
-  
-  if (nrow(network_data[["sig.up.KEGGs.up"]][[i]]) > 0) {
-    tryCatch({
-      network_data[["analysis.up"]][[i]] <-  enrich(
-        compounds = network_data[["sig.up.KEGGs.up"]][[i]]$KEGG,
-        data = fella.data,
-        method = "diffusion",
-        approx = "normality"
-      )
-    }, error = function(cond) {
-      message("Error")
-      message("Here's the original error message:")
-      message(cond)
-      # Choose a return value in case of error
-      return(NA)
-      })
-    }
-
-  #If statement #2: necessary because even if there are significant KEGGs, there could still be no FELLA object
-  
-  if (!is.null(network_data[["analysis.up"]][[i]])) {
-    #extract the sub-network 
-    network_data[["up.graph"]][[i]] <- generateResultsGraph(
-    object = network_data[["analysis.up"]][[i]],
-    data = fella.data,
-    method = "diffusion",
-    thresholdConnectedComponent = 0.05,
-    threshold= 0.05,
-    nlimit=400)
-  }
-source("Generate_network.R")
-
-  # If statement #3: main code block if statement is necessary because even if there is a FELLA object, there could still be no graph
-  if (!is.null(network_data[["up.graph"]][[i]])) {
-    network_data[["upnetwork"]][[i]] <- generate_network(i, network_data,"up","more")
-    
-    # Force the evaluation 
-    print(network_data[["upnetwork"]][[i]])
-    }
-
-  #End the big code block that is only run if there is a graph                                                   
-  
-  #If statement #4: Once all is said and done, the plot needs to be added as an element to the networklist object 
-
-  if (!is.null(network_data[["upnetwork"]][[i]])) {
-    network_data[["upnetworklist"]][[i]] <- network_data[["upnetwork"]][[i]]
-  } else {
-    message_text <- if(test_type == "nostats") {
-      paste("No KEGG subnetwork found for metabolites more abundant in",
-            str_split(contrasts[[i]], pattern="-")[[1]][1], "relative to",
-            str_split(contrasts[[i]], pattern="-")[[1]][2])
+# Function to get pathway categories
+get_pathway_categories <- function(pathways) {
+  pathway_info <- keggGet(pathways)
+  categories <- sapply(pathway_info, function(info) {
+    if ("CLASS" %in% names(info)) {
+      return(info$CLASS)
     } else {
-      paste("No KEGG subnetwork found for metabolites significantly more abundant in",
-            str_split(contrasts[[i]], pattern="-")[[1]][1], "relative to",
-            str_split(contrasts[[i]], pattern="-")[[1]][2])
-    }
-    
-    cat(message_text, "\n")
-    network_data[["upnetworklist"]][[i]]  <- message_text
-  }
-
-#DOWN network
-  
-  #Make a list of significant KEGG compounds
-  if(sig_knowns < 20){
-  network_data[["sig.down.KEGGs.down"]][[i]] <- Client_Data_Download[["report_results"]] %>% 
-    filter(contrast==contrasts[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>%
-           filter(log2FC < 0) %>% 
-           dplyr::select(KEGG) %>% filter(!KEGG=="")} else{
-        network_data[["sig.down.KEGGs.down"]][[i]] <- Client_Data_Download[["report_results"]] %>% 
-    filter(contrast==contrasts[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>%
-           filter(log2FC < 0) %>% filter(Level==1) %>%
-           dplyr::select(KEGG) %>% filter(!KEGG=="")
-           }
-  
-  #If statement #1: Only run the enrich function if there are significant KEGGs to input (otherwise there'd be an error)
-  
-  if (nrow(network_data[["sig.down.KEGGs.down"]][[i]]) > 0) {
-    tryCatch({
-      network_data[["analysis.down"]][[i]] <-  enrich(
-        compounds = network_data[["sig.down.KEGGs.down"]][[i]]$KEGG,
-        data = fella.data,
-        method = "diffusion",
-        approx = "normality"
-      )
-    }, error = function(cond) {
-      message("Error")
-      message("Here's the original error message:")
-      message(cond)
-      # Choose a return value in case of error
       return(NA)
-      })
     }
-
-  #If statement #2: necessary because even if there are significant KEGGs, there could still be no FELLA object
-  
-  if (!is.null(network_data[["analysis.down"]][[i]])) {
-    #extract the sub-network 
-    network_data[["down.graph"]][[i]] <- generateResultsGraph(
-    object = network_data[["analysis.down"]][[i]],
-    data = fella.data,
-    method = "diffusion",
-    thresholdConnectedComponent = 0.05,
-    threshold= 0.05,
-    nlimit=400)
-    }
-  
-  # If statement #3: main code block if statement is necessary because even if there is a FELLA object, there could still be no graph
-  if (!is.null(network_data[["down.graph"]][[i]])) {
-    network_data[["downnetwork"]][[i]] <- generate_network(i, network_data,"down","less")
-    
-    # Force the evaluation 
-    print(network_data[["downnetwork"]][[i]])
-    }
-  #End the big code block that is only run if there is a graph                                                   
-  
-  #If statement #4: Once all is said and done, the plot needs to be added as an element to the networklist object 
-
-  if (!is.null(network_data[["downnetwork"]][[i]])) {
-    network_data[["downnetworklist"]][[i]] <- network_data[["downnetwork"]][[i]]
-  } else {
-    message_text <- if(test_type == "nostats") {
-      paste("No KEGG subnetwork found for metabolites less abundant in",
-            str_split(contrasts[[i]], pattern="-")[[1]][1], "relative to",
-            str_split(contrasts[[i]], pattern="-")[[1]][2])
-    } else {
-      paste("No KEGG subnetwork found for metabolites significantly less abundant in",
-            str_split(contrasts[[i]], pattern="-")[[1]][1], "relative to",
-            str_split(contrasts[[i]], pattern="-")[[1]][2])
-    }
-    
-    cat(message_text, "\n")
-    network_data[["downnetworklist"]][[i]]  <- message_text
-  }
-
+  })
+  names(categories) <- pathways
+  return(categories)
 }
-interleaved_plots <- mapply(
-  function(up_plot, down_plot) {
-    list(up_plot, down_plot)
-  },
-  network_data[["upnetworklist"]],
-  network_data[["downnetworklist"]],
-  SIMPLIFY = FALSE
-)
 
-# Flatten the list
-interleaved_plots <- unlist(interleaved_plots, recursive = FALSE)
+# Example compound data
+up_compounds <- c("CE1554", "C00185", "C02710", "C00815")
+down_compounds <- c("C01718", "C00711", "C00303", "C00328")
+# Add +1 or -1 to each compound
+cpd_data <- c(setNames(rep(1, length(up_compounds)), up_compounds),
+              setNames(rep(-1, length(down_compounds)), down_compounds))
 
-# Add plots to plots
-plots <- lapply(interleaved_plots, function(p) {
-    htmltools::tags$div(p, style="height: 800px; margin-bottom: 40px;")
-})
-#Plot
-htmltools::tagList(plots)
+# Function to get pathways for a given compound
+get_pathways <- function(compound_id) {
+  pathway_list <- keggLink("pathway", paste0("cpd:", compound_id))
+  return(gsub("path:", "", pathway_list))
+}
+
+# Get pathways for each compound
+compound_pathways <- unique(unlist(lapply(names(cpd_data), get_pathways)))
+
+# Validate pathway IDs
+validate_pathway <- function(pathway_id) {
+  tryCatch({
+    res <- keggGet(pathway_id)
+    return(length(res) > 0)
+  }, error = function(e) {
+    return(FALSE)
+  })
+}
+valid_pathways <- compound_pathways[sapply(compound_pathways, validate_pathway)]
+
+# Get pathway categories
+pathway_categories <- get_pathway_categories(valid_pathways)
+
+# Additional global categories to filter out
+global_categories <- c("Metabolism", "Genetic Information Processing", "Environmental Information Processing",
+                       "Cellular Processes", "Organismal Systems", "Human Diseases", "Drug Development",
+                       "Metabolic pathways", "Biosynthesis of secondary metabolites",
+                       "Microbial metabolism in diverse environments", "Carbon metabolism", "Biosynthesis of antibiotics",
+                       "Global and Overview Maps")
+
+# Filter out global pathways
+filtered_pathways <- names(pathway_categories)[!sapply(pathway_categories, function(cat) {
+  any(global_categories %in% cat)
+})]
+
+# Convert pathways to "hsa" format
+filtered_pathways <- paste0("hsa", filtered_pathways)
+
+# Function to visualize pathways
+visualize_pathway <- function(pathway_id, cpd_data, output_dir) {
+  tryCatch({
+    pathview(gene.data = NULL, cpd.data = cpd_data, pathway.id = pathway_id, species = "hsa", out.suffix = pathway_id, kegg.native = TRUE, kegg.dir = output_dir)
+  }, error = function(e) {
+    message(sprintf("Error in pathway %s: %s", pathway_id, e$message))
+  })
+}
+
+# Loop through each filtered pathway and visualize
+for (pathway_id in filtered_pathways) {
+  visualize_pathway(pathway_id, cpd_data, output_dir)
+  # Print the image in the R Markdown document
+  img_file <- file.path(output_dir, paste0(pathway_id, ".pathview.png"))
+  if (file.exists(img_file)) {
+    cat("### Pathway: ", pathway_id, "\n")
+    knitr::include_graphics(img_file)
+  }
+}
 ```
