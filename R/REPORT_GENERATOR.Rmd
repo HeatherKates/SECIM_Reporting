@@ -170,9 +170,9 @@ datatable(data.frame(table(Client_Data_Download$metadata$Class)),
 )
 ```
 
-## Download sample data, raw data, processed data, and statistical test results
+## Download sample and compound metadata, processed and normalized peak intensities, and statistical test results
 
-The results of statistical tests to identify changed metabolites are provided. In addition, we also include raw, feature-filtered, and normalized metabolomic intensity datasets. Please review the "Read Me" sheet included in the download for a detailed explanations of variables.
+The results of statistical tests to identify changed metabolites are provided. In addition, we also include processed (feature-filtered and missing data imputed), and normalized metabolomic intensity datasets. Please review the "Read Me" sheet included in the download for a detailed explanations of variables.
 
 ```{r,eval=FALSE}
 #If we need to manually change annotation of a compound
