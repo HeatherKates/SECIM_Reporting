@@ -129,7 +129,9 @@ for (i in 1:length(Client_Data_Download)) {
 }
 
 #Set a class order
+if(length(class_order)<1){
 class_order <- levels(as.factor(Client_Data_Download[["metadata"]]$Class))
+}
 ```
 
 # Project Summary
