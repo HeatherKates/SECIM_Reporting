@@ -1368,7 +1368,7 @@ hm <-   heatmaply(plot_method = "plotly",normalized_int,show_dendrogram = FALSE,
           #Make this the annotation bar
           col_side_colors = sidecols,xlab = "Samples",
   ylab = "Metabolites", 
-  main = paste("Peak heights (scaled) for most significantly changed metabolites\n",contrasts[[i]],sep=""),margins=c(0,0,60,0),fontsize_row = 5,cex.main=1,labRow=gsub("\\d+_\\w+_","",(rownames(normalized_int))),side_color_colorbar_len = .5)
+  main = paste("Peak heights (scaled) for most significantly changed metabolites\n",contrasts[[i]],sep=""),margins=c(0,0,60,0),fontsize_row = 12,cex.main=1,labRow=gsub("\\d+_\\w+_","",(rownames(normalized_int))),side_color_colorbar_len = .5)
 
 heatmaplist[[i]]=hm
 }
@@ -1387,7 +1387,7 @@ The input changed metabolites are indicated by colored nodes in the pathways (bl
 
 **If your study/contrast yielded > 20 significantly changed compounds with high-confidence IDs, only high-confidence IDs are included as input compounds.**
 
-```{r}
+```{r,out.width = "100%",out.height = "auto", results='asis',dpi=300}
 library(KEGGREST)
 library(pathview)
 
@@ -1483,29 +1483,79 @@ filtered_pathways <- names(pathway_categories)[!sapply(pathway_categories, funct
 
 # Convert pathways to "hsa" format
 filtered_pathways <- gsub("map","hsa", filtered_pathways)
+library(pathview)
+library(httr)
+library(xml2)
 
-# Function to visualize pathways
-visualize_pathway <- function(pathway_id, cpd_data, output_dir) {
+# Function to visualize pathways and track errors
+visualize_pathway <- function(pathway_id, cpd_data, output_dir, error_list) {
   # Save the current working directory
   current_dir <- getwd()
   # Set the working directory to the output directory
   setwd(output_dir)
-  tryCatch({
+  
+  result <- tryCatch({
     pathview(gene.data = NULL, cpd.data = cpd_data, pathway.id = pathway_id, species = "hsa", out.suffix = pathway_id, kegg.native = TRUE)
+    TRUE
+  }, warning = function(w) {
+    message(sprintf("Warning in pathway %s: %s", pathway_id, w$message))
+    FALSE
   }, error = function(e) {
     message(sprintf("Error in pathway %s: %s", pathway_id, e$message))
+    FALSE
   }, finally = {
     # Restore the original working directory
     setwd(current_dir)
   })
+
+  # If the pathway download fails, try using the generic prefix
+  if (!result) {
+    generic_pathway_id <- sub("^hsa", "map", pathway_id)
+    
+    # Check if the generic pathway is available
+    pathway_url <- paste0("https://rest.kegg.jp/get/", generic_pathway_id)
+    response <- GET(pathway_url)
+    if (status_code(response) == 200) {
+      # Extract the KO_PATHWAY id from the generic pathway entry
+      pathway_content <- content(response, as = "text")
+      ko_pathway_id <- sub("^map", "ko", generic_pathway_id)
+      
+      # Use the KO_PATHWAY id to fetch the KGML file
+      result <- tryCatch({
+        setwd(output_dir) # Ensure working directory is still set to output_dir
+        pathview(gene.data = NULL, cpd.data = cpd_data, pathway.id = ko_pathway_id, species = "ko", out.suffix = ko_pathway_id, kegg.native = TRUE)
+        TRUE
+      }, warning = function(w) {
+        message(sprintf("Warning in KO_PATHWAY %s: %s", ko_pathway_id, w$message))
+        FALSE
+      }, error = function(e) {
+        message(sprintf("Error in KO_PATHWAY %s: %s", ko_pathway_id, e$message))
+        FALSE
+      }, finally = {
+        # Restore the original working directory
+        setwd(current_dir)
+      })
+      
+      if (!result) {
+        error_list <<- c(error_list, pathway_id)
+      } else {
+        pathway_id <- ko_pathway_id
+      }
+    } else {
+      error_list <<- c(error_list, pathway_id)
+    }
+  }
+
+  return(pathway_id)
 }
 
-# Initialize a list to store image file paths
+# Initialize a list to store image file paths and a list to track errors
 image_files <- list()
+error_list <- list()
 
 # Loop through each filtered pathway and visualize
 for (pathway_id in filtered_pathways) {
-  visualize_pathway(pathway_id, cpd_data, output_dir)
+  pathway_id <- visualize_pathway(pathway_id, cpd_data, output_dir, error_list)
   # Correct the image file name pattern to match the generated files
   img_file <- file.path(output_dir, paste0(pathway_id, ".", pathway_id, ".png"))
   if (file.exists(img_file)) {
@@ -1513,13 +1563,42 @@ for (pathway_id in filtered_pathways) {
   }
 }
 
-# Save image file paths to a variable in the global environment for later use
-image_files_global <<- image_files
-# Include the images in the R Markdown document outside the loop
-if (length(image_files_global) > 0) {
-  for (img in image_files_global) {
-    cat("### Pathway: ", gsub(".*/|\\.pathview\\.png", "", img), "\n")
-    print(knitr::include_graphics(img))
-  }
+# Flatten the list of image files to a character vector
+image_files <- unlist(image_files)
+
+# Print a message listing the pathways that could not be downloaded
+if (length(error_list) > 0) {
+  cat("The following pathways include one or more of the input compounds, but could not be downloaded from KEGG and are not displayed:\n")
+  cat(paste(error_list, collapse = ", "), "\n")
 }
+
+# Set up the title and subtitle
+title <- paste("Yellow nodes are compounds increased in", str_split(contrasts[[i]], pattern="-")[[1]][1], 
+                  "relative to", str_split(contrasts[[i]], pattern="-")[[1]][2], 
+                  ". Blue nodes are compounds decreased in", str_split(contrasts[[i]], pattern="-")[[1]][1], 
+                  "relative to", str_split(contrasts[[i]], pattern="-")[[1]][2], ".")
+
+# Print the title and subtitle
+cat(paste0("**", title,"**<br><br>"))
+
+cat(paste0("**","Download higher resolution pathway images","**","\n"))
+
+# Create a download button for the images as a zip file
+## Create a dedicated directory
+library(zip)
+library(fs)
+# Create a dedicated directory
+output_dir <- "/blue/timgarrett/hkates/SECIM_Reporting/Deletable/pathway_images"
+dir_create(output_dir)
+
+# Copy image files to the dedicated directory
+invisible(file.copy(image_files, output_dir))
+
+# Create a zip file
+zip_file <- "/blue/timgarrett/hkates/SECIM_Reporting/Deletable/pathway_images.zip"
+zip(zip_file, files = list.files(output_dir, full.names = TRUE))
+
+xfun::embed_file("/blue/timgarrett/hkates/SECIM_Reporting/Deletable/pathway_images.zip")
+
+knitr::include_graphics(image_files)
 ```
