@@ -76,6 +76,30 @@ library(car)
 ```
 
 ```{r}
+# Function to modify data frames in the list
+modify_data_frame <- function(df) {
+  if ("Level" %in% colnames(df)) {
+    # Rename the column
+    colnames(df)[colnames(df) == "Level"] <- "ID_confidence"
+    
+    # Change the values
+    df$ID_confidence <- as.character(df$ID_confidence)
+    df$ID_confidence[df$ID_confidence=="High"] <- "High"
+    df$ID_confidence[df$ID_confidence == "Low"] <- "Low"
+  }
+  return(df)
+}
+
+# Iterate over the list and apply the function conditionally
+Report_results <- lapply(ReportInput, function(x) {
+  if (is.data.frame(x)) {
+    x <- modify_data_frame(x)
+  }
+  return(x)
+})
+```
+
+```{r}
 Client_Data_Download <- ReportInput
 
 #Difference in v3.3 from 3.2 is adding an if statement to pick whether to show padj or p
@@ -242,6 +266,15 @@ Client_Data_Download_out[["README"]] <- read.csv("../InputFiles/ANOVA.emmeans.RE
 if(test_type == "nostats"){
 Client_Data_Download_out[["README"]] <- read.csv("../InputFiles/ttest.README.csv") #Change this
 }
+
+# Modify the README data frame
+Client_Data_Download_out[["README"]] <- Client_Data_Download_out[["README"]] %>%
+  mutate(
+    Field = ifelse(Field == "Level", "ID_confidence", Field),
+    Description = gsub("\\b1\\b", "High", Description),
+    Description = gsub("\\b3\\b", "Low", Description)
+  )
+
 
 Client_Data_Download_out <- c(Client_Data_Download_out["README"],Client_Data_Download_out[1:length(Client_Data_Download_out)-1])
 Client_Data_Download_out[["report_results"]] <- Client_Data_Download_out[["report_results"]] %>% filter(contrast %in% contrasts)
@@ -628,21 +661,26 @@ if(p_type=="log2FC"){
 
 ## Compound identification </span>
 
-Unknown compounds (those unidentified by our internal metabolite library) were assigned low-confidence metabolite names and KEGG IDs based on mass and the HMDB database as implemented in the R package metid (Shen X 2022). The annotation of these compounds is assigned a confidence value of "3" in downloadable tables and in the report. Compounds identified using our internal library are assigned a confidence value of "1". Compounds that could not be identified via either method are annotated using their m/z_RT values and the confidence level is blank.
+Unknown compounds (those unidentified by our internal metabolite library) were assigned low-confidence metabolite names and KEGG IDs based on mass and the HMDB database as implemented in the R package metid (Shen X 2022).
+
+The annotation of these compounds is assigned a confidence value (ID_confidence) of "Low" in downloadable tables and in the report.
+
+Compounds identified using our internal library are assigned a confidence value of "High".
+
+Compounds that could not be identified via either method are annotated using their m/z_RT values and the ID_confidence is blank.
 
 ```{r}
 #Make all of this into an R code block so a for loop can be used
-
 if(p_type %in% c("p.value","adj.p.value")){
   for (i in 1:length(contrasts)){
-    print(paste(nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(compound %in% sig_peaks[[i]] & Level == 1))
-, "significantly changed metabolites(",p_type,"< 0.05) between",str_split(contrasts[[i]],"-")[[1]][[1]], "and",str_split(contrasts[[i]],"-")[[1]][[2]]," were annotated with high confidence (Level 1) ",sep=" "))
+    print(paste(nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(compound %in% sig_peaks[[i]] & ID_confidence == "High"))
+, "significantly changed metabolites(",p_type,"< 0.05) between",str_split(contrasts[[i]],"-")[[1]][[1]], "and",str_split(contrasts[[i]],"-")[[1]][[2]]," were annotated with high confidence",sep=" "))
     }
 }
 if(p_type=="log2FC"){
   for (i in 1:length(contrasts)){
-    print(paste(nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(compound %in% sig_peaks[[i]] & Level == 1))
-, "significantly changed metabolites  (",p_type,"> 1.5) between",str_split(contrasts[[i]],"-")[[1]][[1]], "and",str_split(contrasts[[i]],"-")[[1]][[2]],"were annotated with high confidence (Level 1)",sep=" "))
+    print(paste(nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(compound %in% sig_peaks[[i]] & ID_confidence=="High"))
+, "significantly changed metabolites  (",p_type,"> 1.5) between",str_split(contrasts[[i]],"-")[[1]][[1]], "and",str_split(contrasts[[i]],"-")[[1]][[2]],"were annotated with high confidence",sep=" "))
     }  
 }
 ```
@@ -677,10 +715,10 @@ htmltools::HTML(html_text)
 if(p_type == "p.value"){
   dt <- datatable(Client_Data_Download[["report_results"]] %>%
               filter(p.value < 0.05) %>%
-              dplyr::select(c(compound, p.value, Level, contrast, contains("FC"))) %>%
-              mutate(Level = factor(Level, levels = c("1", "3", "")), 
+              dplyr::select(c(compound, p.value, ID_confidence, contrast, contains("FC"))) %>%
+              mutate(ID_confidence = factor(ID_confidence, levels = c("High", "Low", "")), 
                      across(where(is.numeric), round, 5)) %>%
-              arrange(Level, p.value), 
+              arrange(ID_confidence, p.value), 
             caption = 'Table of significantly changed metabolites for (p-value < 0.05)')
     dt %>% formatRound(columns = c("p.value", "FC", "log2FC"), digits = 4)
 
@@ -689,10 +727,10 @@ if(p_type == "p.value"){
 if(p_type == "adj.p.value"){
   dt <- datatable(Client_Data_Download[["report_results"]] %>%
               filter(adj.p.value < 0.05) %>%
-              dplyr::select(c(compound, adj.p.value, Level, contrast, contains("FC"))) %>%
-              mutate(Level = factor(Level, levels = c("1", "3", "")), 
+              dplyr::select(c(compound, adj.p.value, ID_confidence, contrast, contains("FC"))) %>%
+              mutate(ID_confidence = factor(ID_confidence, levels = c("High", "Low", "")), 
                      across(where(is.numeric), round, 5)) %>%
-              arrange(Level, adj.p.value), 
+              arrange(ID_confidence, adj.p.value), 
             caption = 'Table of significantly changed metabolites for (adjusted p-value < 0.05)')
   dt %>% formatRound(columns = c("adj.p.value", "FC", "log2FC"), digits = 4)
 }
@@ -700,10 +738,10 @@ if(p_type == "adj.p.value"){
 if(p_type == "log2FC"){
   dt <- datatable(Client_Data_Download[["report_results"]] %>%
               filter(abs(log2FC) > 1.5) %>%
-              dplyr::select(c(compound, Level, contrast, contains("FC"))) %>%
-              mutate(Level = factor(Level, levels = c("1", "3", "")), 
+              dplyr::select(c(compound, ID_confidence, contrast, contains("FC"))) %>%
+              mutate(ID_confidence = factor(ID_confidence, levels = c("High", "Low", "")), 
                      across(where(is.numeric), round, 5)) %>%
-              arrange(Level, log2FC), 
+              arrange(ID_confidence, log2FC), 
             caption = 'Table of changed metabolites (log2FC > 1.5)')
     dt %>% formatRound(columns = c("FC", "log2FC"), digits = 4)
 
@@ -759,12 +797,12 @@ All plots below can be zoomed, selected, and downloaded individually (and/or as 
 if(test_type == "nostats"){
   if(sig_knowns<20){
   html_text <- "Metabolites with >1.5 log2FC change are shown by metabolite class. </span><br><br>"}else{
-    html_text <- "Level 1 Metabolites with >1.5 log2FC change are shown by metabolite class. </span><br><br>"
+    html_text <- "High ID_confidence Metabolites with >1.5 log2FC change are shown by metabolite class. </span><br><br>"
   }
 } else {
   if(sig_knowns<20){
   html_text <- paste0("Metabolites with significant changes (",p_type,"<0.05) are shown by metabolite class.</span><br><br>")}else{
-     html_text <- paste0("Level 1 Metabolites with significant changes (",p_type,"<0.05) are shown by metabolite class. </span><br><br>")
+     html_text <- paste0("High ID_confidence Metabolites with significant changes (",p_type,"<0.05) are shown by metabolite class. </span><br><br>")
   }
 }
 htmltools::HTML(html_text)
@@ -813,9 +851,9 @@ barplotvector <- c(classvar,
   #The number of decreases
   nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC< 0)),
   #The metabolites that increased
-gsub("(?m),\\s(?!\\d)|,\\s*$", "\\1\n", toString(t(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% dplyr::filter(Class==classvar) %>% filter(compound %in% sig_peaks[[i]]) %>% filter(log2FC> 0)%>% dplyr::select(c(compound,Level)))),perl=TRUE),
+gsub("(?m),\\s(?!\\d)|,\\s*$", "\\1\n", toString(t(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% dplyr::filter(Class==classvar) %>% filter(compound %in% sig_peaks[[i]]) %>% filter(log2FC> 0)%>% dplyr::select(c(compound,ID_confidence)))),perl=TRUE),
 #The metabolites that decreased
-gsub("(?m),\\s(?!\\d)|,\\s*$", "\\1\n", toString(t(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% dplyr::filter(Class==classvar) %>% filter(compound %in% sig_peaks[[i]]) %>% filter(log2FC < 0)%>% dplyr::select(c(compound,Level)))),perl=TRUE))
+gsub("(?m),\\s(?!\\d)|,\\s*$", "\\1\n", toString(t(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% dplyr::filter(Class==classvar) %>% filter(compound %in% sig_peaks[[i]]) %>% filter(log2FC < 0)%>% dplyr::select(c(compound,ID_confidence)))),perl=TRUE))
 bar.df<<-rbind(barplotvector,bar.df)
 }
 }
@@ -909,9 +947,9 @@ for (classvar in levels(as.factor(Client_Data_Download[["report_results"]] %>% f
   #the class
 barplotminmax.vector <- c(barplotminmax.vector,
 #The number of increases
-nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC> 0 & Level == 1)),
+nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC> 0 & ID_confidence=="High")),
   #The number of decreases
-  nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]]&log2FC< 0& Level == 1)))
+  nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]]&log2FC< 0& ID_confidence=="High")))
 }
 ##
 
@@ -921,19 +959,19 @@ bar.df <- data.frame(matrix(ncol = 5, nrow = 0))
 for (classvar in levels(as.factor(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% dplyr::select(Class) %>% unlist()))){
   if(
     #The number of increases
-    (nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC> 0& Level == 1))+ #plus
+    (nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC> 0& ID_confidence=="High"))+ #plus
   #The number of decreases
-nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC< 0& Level == 1)))>0){ #is greater than 0, then 
+nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC< 0& ID_confidence=="High")))>0){ #is greater than 0, then 
   #the class
 barplotvector <- c(classvar,
 #The number of increases
-  nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC> 0& Level == 1)),
+  nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC> 0& ID_confidence=="High")),
   #The number of decreases
-  nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC< 0& Level == 1)),
+  nrow(data.frame(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]])) %>% dplyr::filter(Class==classvar& compound %in% sig_peaks[[i]] &log2FC< 0& ID_confidence=="High")),
   #The metabolites that increased
-gsub("(?m),\\s(?!\\d)|,\\s*$", "\\1\n", toString(t(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% dplyr::filter(Class==classvar) %>% filter(compound %in% sig_peaks[[i]]) %>% filter(log2FC> 0& Level == 1)%>% dplyr::select(c(compound,Level)))),perl=TRUE),
+gsub("(?m),\\s(?!\\d)|,\\s*$", "\\1\n", toString(t(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% dplyr::filter(Class==classvar) %>% filter(compound %in% sig_peaks[[i]]) %>% filter(log2FC> 0& ID_confidence=="High")%>% dplyr::select(c(compound,ID_confidence)))),perl=TRUE),
 #The metabolites that decreased
-gsub("(?m),\\s(?!\\d)|,\\s*$", "\\1\n", toString(t(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% dplyr::filter(Class==classvar) %>% filter(compound %in% sig_peaks[[i]]) %>% filter(log2FC < 0& Level == 1)%>% dplyr::select(c(compound,Level)))),perl=TRUE))
+gsub("(?m),\\s(?!\\d)|,\\s*$", "\\1\n", toString(t(Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% dplyr::filter(Class==classvar) %>% filter(compound %in% sig_peaks[[i]]) %>% filter(log2FC < 0& ID_confidence=="High")%>% dplyr::select(c(compound,ID_confidence)))),perl=TRUE))
 bar.df<<-rbind(barplotvector,bar.df)
 }
 }
@@ -1057,7 +1095,7 @@ volcano.res[which(abs(volcano.res['log2FC']) > 0.58 ),"group"] <- "log2FC"
 volcano.res[which(volcano.res$compound %in% sig_peaks[[i]]  & abs(volcano.res['log2FC']) > 0.58 ),"group"] <- "Significant&log2FC"
 
 # make the Plot.ly plot
-p <- plot_ly(data = volcano.res, x = volcano.res$log2FC, y = -log10(volcano.res[[p_type]]),hoverinfo = "text", text = paste(volcano.res$compound,volcano.res$Level,sep=":"),
+p <- plot_ly(data = volcano.res, x = volcano.res$log2FC, y = -log10(volcano.res[[p_type]]),hoverinfo = "text", text = paste(volcano.res$compound,volcano.res$ID_confidence,sep=":"),
              mode = "markers", color = volcano.res$group,colors = c(log2FC="black",NotSignificant="gray",Significant="orange",`Significant&log2FC`="red")) %>% 
   layout(title=paste("P-value vs. Fold-Change in",str_split(contrasts[[i]],pattern="-")[[1]][1],"relative to\n",
                             str_split(contrasts[[i]],pattern="-")[[1]][2]),
@@ -1096,16 +1134,16 @@ for (i in c(1:length(contrasts))){
 #Manual changes needed for where metabolite data begins and for groupvar
 ## Order results by p.value values
 if(p_type=="adj.p.value"){
-  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% mutate(Level = factor(Level, levels = c("1", "3", ""), ordered = TRUE)) %>%
-  arrange(Level,adj.p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
-  Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]])  %>% mutate(Level = factor(Level, levels = c("1", "3", ""), ordered = TRUE)) %>%
-  arrange(Level,adj.p.value)  %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
+  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% mutate(ID_confidence = factor(ID_confidence, levels = c("High", "Low", ""), ordered = TRUE)) %>%
+  arrange(ID_confidence,adj.p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
+  Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]])  %>% mutate(ID_confidence = factor(ID_confidence, levels = c("High", "Low", ""), ordered = TRUE)) %>%
+  arrange(ID_confidence,adj.p.value)  %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
 }
 if(p_type=="p.value"){
-  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% mutate(Level = factor(Level, levels = c("1", "3", ""), ordered = TRUE)) %>%
-  arrange(Level,p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
-  Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]])  %>% mutate(Level = factor(Level, levels = c("1", "3", ""), ordered = TRUE)) %>%
-  arrange(Level,p.value)  %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
+  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% mutate(ID_confidence = factor(ID_confidence, levels = c("High", "Low", ""), ordered = TRUE)) %>%
+  arrange(ID_confidence,p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
+  Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]])  %>% mutate(ID_confidence = factor(ID_confidence, levels = c("High", "Low", ""), ordered = TRUE)) %>%
+  arrange(ID_confidence,p.value)  %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
 }
 if(p_type=="log2FC"){
   top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(desc(log2FC)) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
@@ -1302,16 +1340,16 @@ for (i in 1:length(contrasts)){
 #Manual changes needed for where metabolite data begins and for groupvar
 ## Order results by p.value values
 if(p_type=="adj.p.value"){
-  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% mutate(Level = factor(Level, levels = c("1", "3", ""), ordered = TRUE)) %>%
-  arrange(Level,adj.p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
-  Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]])  %>% mutate(Level = factor(Level, levels = c("1", "3", ""), ordered = TRUE)) %>%
-  arrange(Level,adj.p.value)  %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
+  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% mutate(ID_confidence = factor(ID_confidence, levels = c("High", "Low", ""), ordered = TRUE)) %>%
+  arrange(ID_confidence,adj.p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
+  Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]])  %>% mutate(ID_confidence = factor(ID_confidence, levels = c("1", "3", ""), ordered = TRUE)) %>%
+  arrange(ID_confidence,adj.p.value)  %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
 }
 if(p_type=="p.value"){
-  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% mutate(Level = factor(Level, levels = c("1", "3", ""), ordered = TRUE)) %>%
-  arrange(Level,p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
-  Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]])  %>% mutate(Level = factor(Level, levels = c("1", "3", ""), ordered = TRUE)) %>%
-  arrange(Level,p.value)  %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
+  top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% mutate(ID_confidence = factor(ID_confidence, levels = c("High", "Low", ""), ordered = TRUE)) %>%
+  arrange(ID_confidence,p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
+  Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]])  %>% mutate(ID_confidence = factor(ID_confidence, levels = c("High", "Low", ""), ordered = TRUE)) %>%
+  arrange(ID_confidence,p.value)  %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
 }
 if(p_type=="log2FC"){
   top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast == contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(desc(log2FC)) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
@@ -1409,10 +1447,10 @@ if(sig_knowns < 20){
            filter(log2FC < 0) %>% filter(!KEGG=="") %>% pull(KEGG)} else{
         up_compounds <- Client_Data_Download[["report_results"]] %>% 
     filter(contrast==contrasts[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>%
-           filter(log2FC > 0) %>% filter(Level==1) %>% filter(!KEGG=="") %>% pull(KEGG)
+           filter(log2FC > 0) %>% filter(ID_confidence=="High") %>% filter(!KEGG=="") %>% pull(KEGG)
          down_compounds <- Client_Data_Download[["report_results"]] %>% 
     filter(contrast==contrasts[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>%
-           filter(log2FC < 0) %>% filter(Level==1) %>% filter(!KEGG=="") %>% pull(KEGG)
+           filter(log2FC < 0) %>% filter(ID_confidence=="High") %>% filter(!KEGG=="") %>% pull(KEGG)
            }
 
 # Add +1 or -1 to each compound
