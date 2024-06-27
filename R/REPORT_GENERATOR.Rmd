@@ -1377,9 +1377,13 @@ heatmaplist[[i]]=hm
 htmltools::tagList(setNames(heatmaplist, NULL))
 ```
 
-## KEGG over representation and sub network analysis
+## Pathway Visualization with KEGG and Pathview
 
-KEGG analysis was performed with the R package FELLA (https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-018-2487-5). Starting from a list of metabolites of interest, FELLA applies a null diffusive process over a network-based representation of the KEGG database and derive a relevant sub-network. The result of this analysis is a list of affected pathways and a graphical sub-pathway representation. The input list of metabolites of interest is indicated by the plot title. 
+Pathway analysis was performed using the R package Pathview (https://bioconductor.org/packages/release/bioc/html/pathview.html). This method leverages the KEGG database to map and visualize metabolites onto relevant biochemical pathways. Starting from a list of up-regulated and down-regulated metabolites, Pathview generates detailed pathway diagrams highlighting the changes in metabolic activity.
+
+This approach is more inclusive than Metabolite Set Enrichment Analysis (MSEA) (which provides statistical significance for enrichment of metabolite sets in pathways). Pathview offers a broader visualization by mapping all input metabolites onto KEGG pathways, allowing for a comprehensive view of metabolic changes. This method can identify affected pathways that might not reach statistical significance in MSEA but may still be biologically relevant.
+
+The input changed metabolites are indicated by colored nodes in the pathways (blue is decreased, yellow is increased).
 
 **If your study/contrast yielded > 20 significantly changed compounds with high-confidence IDs, only high-confidence IDs are included as input compounds.**
 
@@ -1395,23 +1399,22 @@ if (!dir.exists(output_dir)) {
   dir.create(output_dir, recursive = TRUE)
 }
 
-# Function to get pathway categories
-get_pathway_categories <- function(pathways) {
-  pathway_info <- keggGet(pathways)
-  categories <- sapply(pathway_info, function(info) {
-    if ("CLASS" %in% names(info)) {
-      return(info$CLASS)
-    } else {
-      return(NA)
-    }
-  })
-  names(categories) <- pathways
-  return(categories)
-}
+# compound data
+if(sig_knowns < 20){
+  up_compounds <- Client_Data_Download[["report_results"]] %>% 
+    filter(contrast==contrasts[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>%
+           filter(log2FC > 0) %>% filter(!KEGG=="") %>% pull(KEGG)
+  down_compounds <- Client_Data_Download[["report_results"]] %>% 
+    filter(contrast==contrasts[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>%
+           filter(log2FC < 0) %>% filter(!KEGG=="") %>% pull(KEGG)} else{
+        up_compounds <- Client_Data_Download[["report_results"]] %>% 
+    filter(contrast==contrasts[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>%
+           filter(log2FC > 0) %>% filter(Level==1) %>% filter(!KEGG=="") %>% pull(KEGG)
+         down_compounds <- Client_Data_Download[["report_results"]] %>% 
+    filter(contrast==contrasts[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>%
+           filter(log2FC < 0) %>% filter(Level==1) %>% filter(!KEGG=="") %>% pull(KEGG)
+           }
 
-# Example compound data
-up_compounds <- c("CE1554", "C00185", "C02710", "C00815")
-down_compounds <- c("C01718", "C00711", "C00303", "C00328")
 # Add +1 or -1 to each compound
 cpd_data <- c(setNames(rep(1, length(up_compounds)), up_compounds),
               setNames(rep(-1, length(down_compounds)), down_compounds))
@@ -1434,7 +1437,34 @@ validate_pathway <- function(pathway_id) {
     return(FALSE)
   })
 }
-valid_pathways <- compound_pathways[sapply(compound_pathways, validate_pathway)]
+
+valid_pathways <- unique(compound_pathways[sapply(compound_pathways, validate_pathway)])
+
+# Function to get pathway categories
+get_pathway_categories <- function(pathways) {
+  # Split pathways into chunks of 10
+  pathway_chunks <- split(pathways, ceiling(seq_along(pathways) / 10))
+  
+  # Initialize an empty list to store categories
+  all_categories <- list()
+  
+  # Process each chunk
+  for (chunk in pathway_chunks) {
+    pathway_info <- keggGet(chunk)
+    categories <- sapply(pathway_info, function(info) {
+      if ("CLASS" %in% names(info)) {
+        return(info$CLASS)
+      } else {
+        return(NA)
+      }
+    })
+    all_categories <- c(all_categories, categories)
+  }
+  
+  # Convert the list to a named vector
+  names(all_categories) <- pathways
+  return(unlist(all_categories))
+}
 
 # Get pathway categories
 pathway_categories <- get_pathway_categories(valid_pathways)
@@ -1448,29 +1478,48 @@ global_categories <- c("Metabolism", "Genetic Information Processing", "Environm
 
 # Filter out global pathways
 filtered_pathways <- names(pathway_categories)[!sapply(pathway_categories, function(cat) {
-  any(global_categories %in% cat)
+  is.na(cat) || any(global_categories %in% cat)
 })]
 
 # Convert pathways to "hsa" format
-filtered_pathways <- paste0("hsa", filtered_pathways)
+filtered_pathways <- gsub("map","hsa", filtered_pathways)
 
 # Function to visualize pathways
 visualize_pathway <- function(pathway_id, cpd_data, output_dir) {
+  # Save the current working directory
+  current_dir <- getwd()
+  # Set the working directory to the output directory
+  setwd(output_dir)
   tryCatch({
-    pathview(gene.data = NULL, cpd.data = cpd_data, pathway.id = pathway_id, species = "hsa", out.suffix = pathway_id, kegg.native = TRUE, kegg.dir = output_dir)
+    pathview(gene.data = NULL, cpd.data = cpd_data, pathway.id = pathway_id, species = "hsa", out.suffix = pathway_id, kegg.native = TRUE)
   }, error = function(e) {
     message(sprintf("Error in pathway %s: %s", pathway_id, e$message))
+  }, finally = {
+    # Restore the original working directory
+    setwd(current_dir)
   })
 }
+
+# Initialize a list to store image file paths
+image_files <- list()
 
 # Loop through each filtered pathway and visualize
 for (pathway_id in filtered_pathways) {
   visualize_pathway(pathway_id, cpd_data, output_dir)
-  # Print the image in the R Markdown document
-  img_file <- file.path(output_dir, paste0(pathway_id, ".pathview.png"))
+  # Correct the image file name pattern to match the generated files
+  img_file <- file.path(output_dir, paste0(pathway_id, ".", pathway_id, ".png"))
   if (file.exists(img_file)) {
-    cat("### Pathway: ", pathway_id, "\n")
-    knitr::include_graphics(img_file)
+    image_files <- c(image_files, img_file)
+  }
+}
+
+# Save image file paths to a variable in the global environment for later use
+image_files_global <<- image_files
+# Include the images in the R Markdown document outside the loop
+if (length(image_files_global) > 0) {
+  for (img in image_files_global) {
+    cat("### Pathway: ", gsub(".*/|\\.pathview\\.png", "", img), "\n")
+    print(knitr::include_graphics(img))
   }
 }
 ```
