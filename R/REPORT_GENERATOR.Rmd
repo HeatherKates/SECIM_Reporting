@@ -84,14 +84,14 @@ modify_data_frame <- function(df) {
     
     # Change the values
     df$ID_confidence <- as.character(df$ID_confidence)
-    df$ID_confidence[df$ID_confidence=="High"] <- "High"
-    df$ID_confidence[df$ID_confidence == "Low"] <- "Low"
+    df$ID_confidence[df$ID_confidence == "1"] <- "High"
+    df$ID_confidence[df$ID_confidence == "3"] <- "Low"
   }
   return(df)
 }
 
 # Iterate over the list and apply the function conditionally
-Report_results <- lapply(ReportInput, function(x) {
+ReportInput <- lapply(ReportInput, function(x) {
   if (is.data.frame(x)) {
     x <- modify_data_frame(x)
   }
@@ -102,28 +102,27 @@ Report_results <- lapply(ReportInput, function(x) {
 ```{r}
 Client_Data_Download <- ReportInput
 
-#Difference in v3.3 from 3.2 is adding an if statement to pick whether to show padj or p
 if(test_type %in% c("lmm","repeated_measures_anova")){
 if(nrow(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05)) > 10){
     p_type="adj.p.value"} else {
       p_type="p.value"}
-sig_knowns <- nrow(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05) %>% filter(Level==1)) 
+sig_knowns <- nrow(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05) %>% filter(ID_confidence=="High")) 
 } 
 if (test_type =="t.test"){
   if(nrow(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05)) > 10){
     p_type="adj.p.value"} else {
       p_type="p.value"}
-  sig_knowns <- nrow(Client_Data_Download[["report_results"]] %>% filter(!!sym(p_type)<0.05) %>% filter(Level==1)) 
+  sig_knowns <- nrow(Client_Data_Download[["report_results"]] %>% filter(!!sym(p_type)<0.05) %>% filter(ID_confidence=="High"))
 }
 if (test_type=="nostats"){
   p_type="log2FC"
-  sig_knowns <- nrow(Client_Data_Download[["report_results"]] %>% filter(abs(log2FC)>0.58) %>% filter(Level==1)) 
+  sig_knowns <- nrow(Client_Data_Download[["report_results"]] %>% filter(abs(log2FC)>0.58) %>% filter(ID_confidence=="High"))
 }
 if(test_type == "anova"){
 if(nrow(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05)) > 10){
     p_type="adj.p.value"} else {
       p_type="adj.p.value"} #anova with emmeans will only have adj p value bc it's adjusted for multiple contrasts
-sig_knowns <- nrow(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05) %>% filter(Level==1)) 
+sig_knowns <- nrow(Client_Data_Download[["report_results"]] %>% filter(adj.p.value<0.05) %>% filter(ID_confidence=="High"))
 } 
 ```
 
