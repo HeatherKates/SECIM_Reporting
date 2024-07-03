@@ -36,6 +36,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   write.csv(file=paste(client,mode,"metab.in.csv"),dataset,row.names = FALSE)
   mSet<-InitDataObjects("pktable", "stat", FALSE)
   mSet<-Read.TextData(mSet, paste(client,mode,"metab.in.csv"), "colu", "disc")
+  
   mSet<-SanityCheckDataHRK(mSet)
   #Get the metadataset from mSet so the order matches throughout
   md <- data.frame(mSet[["dataSet"]][["meta.info"]])
@@ -61,7 +62,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   mSet<-ImputeMissingVar(mSet, method="knn_var")
   SanityCheckDataHRK(mSet)
   #Blank-feature filtering
-  mSet<-FilterVariable(mSet, filter="iqr", "F", 10)
+  mSet<-FilterVariable(mSet, var.filter="iqr", "F", 10) #changed this, I guess there was a metaboanalystR update when reinstalled but that may lead to other issues
   #Normalization
   mSet<-PreparePrenormData(mSet)
   mSet<-Normalization(mSet, rowNorm=rowNorm, transNorm=transNorm, scaleNorm=scaleNorm, ratio=FALSE, ratioNum=20)
@@ -603,38 +604,98 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   outputs_list[[6]] <- arrangeGrob(plots[["plot_env"]][["p5"]], plots[["plot_env"]][["p7"]], plots[["plot_env"]][["p6"]], plots[["plot_env"]][["p8"]], ncol = 2, top = textGrob("Sample View"))
   
   if (mode == "Neg") {
-    outputs_list[[7]] <- md %>% dplyr::filter(!rownames(.) %in% samples_to_drop_post_norm)
+      if (!is.null(samples_to_drop_post_norm)) {
+        outputs_list[[7]] <- md %>% dplyr::filter(!rownames(.) %in% samples_to_drop_post_norm)
+      } else {
+        outputs_list[[7]] <- md
+      }
     if (test_type == "t.test") {
-      names(outputs_list) <- c(paste0(mode, ".ttest.metab"), paste0(mode, "Empty"), paste0(mode, ".processed.data"),
-                               paste0(mode, ".normalized.data"), paste0(mode, ".FeatureView"), paste0(mode, ".SampleView"), "metadata", paste0(mode, ".total.normalized.data"))
+      names(outputs_list) <- c(
+        paste0(mode, ".ttest.metab"),
+        paste0(mode, "Empty"),
+        paste0(mode, ".processed.data"),
+        paste0(mode, ".normalized.data"),
+        paste0(mode, ".FeatureView"),
+        paste0(mode, ".SampleView"),
+        "metadata"
+      )
+      if (!is.null(samples_to_drop_post_norm)) {
+        names(outputs_list) <- c(names(outputs_list), paste0(mode, ".total.normalized.data"))
+      }
     } 
     if (test_type %in% c("anova", "lm", "lme")) {
-      names(outputs_list) <- c(paste0(mode, ".emmeans.results.metab"), paste0(mode, ".fit.results.metab"),
-                               paste0(mode, ".processed.data"), paste0(mode, ".normalized.data"),
-                               paste0(mode, ".FeatureView"), paste0(mode, ".SampleView"), "metadata", paste0(mode, ".total.normalized.data"))
+      names(outputs_list) <- c(
+        paste0(mode, ".emmeans.results.metab"),
+        paste0(mode, ".fit.results.metab"),
+        paste0(mode, ".processed.data"),
+        paste0(mode, ".normalized.data"),
+        paste0(mode, ".FeatureView"),
+        paste0(mode, ".SampleView"),
+        "metadata"
+      )
+      if (!is.null(samples_to_drop_post_norm)) {
+        names(outputs_list) <- c(names(outputs_list), paste0(mode, ".total.normalized.data"))
+      }
     }
     if (test_type == "nostats") {
-      names(outputs_list) <- c(paste0(mode, ".FCanlaysis.metab"), paste0(mode, "Empty"), paste0(mode, ".processed.data"),
-                               paste0(mode, ".normalized.data"), paste0(mode, ".FeatureView"), paste0(mode, ".SampleView"), "metadata", paste0(mode, ".total.normalized.data"))
+      names(outputs_list) <- c(
+        paste0(mode, ".FCanlaysis.metab"),
+        paste0(mode, "Empty"),
+        paste0(mode, ".processed.data"),
+        paste0(mode, ".normalized.data"),
+        paste0(mode, ".FeatureView"),
+        paste0(mode, ".SampleView"),
+        "metadata"
+      )
+      if (!is.null(samples_to_drop_post_norm)) {
+        names(outputs_list) <- c(names(outputs_list), paste0(mode, ".total.normalized.data"))
+      }
     }
   } else {
     if (test_type == "t.test") {
-      names(outputs_list) <- c(paste0(mode, ".ttest.metab"), paste0(mode, "Empty"), paste0(mode, ".processed.data"),
-                               paste0(mode, ".normalized.data"), paste0(mode, ".FeatureView"), paste0(mode, ".SampleView"), paste0(mode, ".total.normalized.data"))
+      names(outputs_list) <- c(
+        paste0(mode, ".ttest.metab"),
+        paste0(mode, "Empty"),
+        paste0(mode, ".processed.data"),
+        paste0(mode, ".normalized.data"),
+        paste0(mode, ".FeatureView"),
+        paste0(mode, ".SampleView")
+      )
+      if (!is.null(samples_to_drop_post_norm)) {
+        names(outputs_list) <- c(names(outputs_list), paste0(mode, ".total.normalized.data"))
+      }
     }
     if (test_type %in% c("anova", "lm", "lme")) {
-      names(outputs_list) <- c(paste0(mode, ".emmeans.results.metab"), paste0(mode, ".fit.results.metab"),
-                               paste0(mode, ".processed.data"), paste0(mode, ".normalized.data"),
-                               paste0(mode, ".FeatureView"), paste0(mode, ".SampleView"), paste0(mode, ".total.normalized.data"))
+      names(outputs_list) <- c(
+        paste0(mode, ".emmeans.results.metab"),
+        paste0(mode, ".fit.results.metab"),
+        paste0(mode, ".processed.data"),
+        paste0(mode, ".normalized.data"),
+        paste0(mode, ".FeatureView"),
+        paste0(mode, ".SampleView")
+      )
+      if (!is.null(samples_to_drop_post_norm)) {
+        names(outputs_list) <- c(names(outputs_list), paste0(mode, ".total.normalized.data"))
+      }
     }
     if (test_type == "nostats") {
-      names(outputs_list) <- c(paste0(mode, ".FCanlaysis.metab"), paste0(mode, "Empty"), paste0(mode, ".processed.data"),
-                               paste0(mode, ".normalized.data"), paste0(mode, ".FeatureView"), paste0(mode, ".SampleView"), paste0(mode, ".total.normalized.data"))
+      names(outputs_list) <- c(
+        paste0(mode, ".FCanlaysis.metab"),
+        paste0(mode, "Empty"),
+        paste0(mode, ".processed.data"),
+        paste0(mode, ".normalized.data"),
+        paste0(mode, ".FeatureView"),
+        paste0(mode, ".SampleView")
+      )
+      if (!is.null(samples_to_drop_post_norm)) {
+        names(outputs_list) <- c(names(outputs_list), paste0(mode, ".total.normalized.data"))
+      }
     }
   }
   
   return(outputs_list)
 }
+
 # List of files to remove
 files_to_remove <- c("/blue/timgarrett/hkates/complete_norm.qs", "/blue/timgarrett/hkates/data_orig.qs",
                      "/blue/timgarrett/hkates/data_prefilter_iqr.csv", 
