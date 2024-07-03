@@ -164,15 +164,26 @@ my.kegg.plot <- function(endpoint="/pathway_kegg_plot",
 .do.api.call <- function(call, file.send = "tosend.rds"){
   
   load_httr();
+  print(paste("Making API call to:", call))  # Log the API call
   request <- httr::POST(url = call, 
                         body = list(rds = upload_file(file.send, "application/octet-stream")),
                         encode = "multipart")
   
-  # check if successful
+  # Check if the request was successful
   if(request$status_code != 200){
-    AddErrMsg("Failed to connect to the API Server!")
+    error_message <- paste("Failed to connect to the API Server! Status code:", request$status_code)
+    AddErrMsg(error_message)
+    print(content(request, "text"))  # Log the response content for debugging
     return(NULL)
   }
   
-  return(unserialize(httr::content(request, "raw")));
+  tryCatch({
+    content <- unserialize(httr::content(request, "raw"))
+  }, error = function(e) {
+    AddErrMsg("Failed to unserialize the response!")
+    print(e)  # Log the error for debugging
+    return(NULL)
+  })
+  
+  return(content)
 }

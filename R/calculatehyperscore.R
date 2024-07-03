@@ -1,5 +1,5 @@
 CalculateHyperScore <- function(mSetObj=NA){
-  mSetObj <- mSetTest
+  mSetObj <- mSet
   
   # make a clean dataSet$cmpd data based on name mapping
   # only valid hmdb name will be used
@@ -25,7 +25,7 @@ CalculateHyperScore <- function(mSetObj=NA){
     
     # make this lazy load
     #if(!exists("my.hyperscore.kegg")){ # public web on same user dir
-      source("/blue/timgarrett/hkates/SECIM_Reporting/R/util_api.R");    
+      source("/blue/timgarrett/hkates/SECIM_Reporting/R/util_api.R")
     #}
     
     mSetObj$api$oraVec <- ora.vec; 

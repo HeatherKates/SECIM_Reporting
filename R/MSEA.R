@@ -8,7 +8,7 @@ source("/blue/timgarrett/hkates/SECIM_Reporting/R/setcurrentmsetlib.R")
 
 # Create vector consisting of compounds for enrichment analysis 
 rm(mSet)
-my.vec <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(!!sym(p_type)<0.05) %>% filter(Level==1) %>% dplyr::select(compound) %>% unlist()
+my.vec <- Client_Data_Download[["report_results"]] %>% filter(contrast==contrasts[[i]]) %>% filter(!!sym(p_type)<0.05) %>% filter(ID_confidence=="High") %>% dplyr::select(compound) %>% unlist()
 # Remove anything after "+" and anything within "()"
 #my.vec <-  gsub("\\+.*", "", my.vec)
 #my.vec <- gsub("\\(.*?\\)", "", my.vec)
@@ -32,10 +32,10 @@ mSet<-CreateMappingResultTable(mSet)
 mSet<-SetMetabolomeFilter(mSet, F);
 
 # Select metabolite set library, refer to 
-mSet<-SetCurrentMsetLib(mSet, "kegg_pathway", 0)
-mSetTest <- mSet
+mSet<-SetCurrentMsetLib(mSet, "smpdb_pathway", 0)
+#mSetTest <- mSet
 # Calculate hypergeometric score, results table generated in your working directory
-mSet<-CalculateHyperScore(mSetTest)
+mSet<-CalculateHyperScore(mSet)
 ## [1] "Loaded files from MetaboAnalyst web-server."
 # Plot the ORA, bar-graph
 mSet<-PlotORA(mSet, paste0("/blue/timgarrett/hkates/SECIM_Reporting/",client,"MSEA.", "png"), 300, width=NA)
