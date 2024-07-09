@@ -105,11 +105,13 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
     colnames(data.proc) <- gsub("^X","",colnames(data.proc))
     data.proc$id <- rownames(data.proc)
     data.proc <- data.proc %>% relocate(id)
-    colnames(data.proc) <- gsub("X","",colnames(data.proc))#v6
+    #colnames(data.proc) <- gsub("X","",colnames(data.proc))#v6 This was needed but problematic. See if it's needed again
     # Get the column names from dataset[1:num_meta,]
     #meta_cols <- colnames(dataset[1:num_meta,])
     # Order the columns of data.proc based on meta_cols
     #data.proc <- data.proc[, order(colnames(data.proc) %in% meta_cols)]
+    #browser()
+    #data.proc <- data.proc[, colnames(tmd)]
     data.proc <- rbind(tmd,data.proc)  
   }
   
