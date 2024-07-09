@@ -592,7 +592,6 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
   outputs_list[[4]] <- outputs_list[[4]][c(which(outputs_list[[4]]$id == "Class"), setdiff(seq_len(nrow(outputs_list[[4]])), which(outputs_list[[4]]$id == "Class"))),]
   outputs_list[[4]] <- outputs_list[[4]][c(which(is.na(outputs_list[[4]]$id)), setdiff(seq_len(nrow(outputs_list[[4]])), which(is.na(outputs_list[[4]]$id)))),]
   outputs_list[[4]] <- outputs_list[[4]] %>% relocate(compound)
-  
   if (!is.null(samples_to_drop_post_norm)) {
     outputs_list[[if (mode == "Neg") 8 else 7]] <- merge(data.final.total, peak_annotation, by = "id", all.x = TRUE)
     outputs_list[[if (mode == "Neg") 8 else 7]] <- outputs_list[[if (mode == "Neg") 8 else 7]][c(which(outputs_list[[if (mode == "Neg") 8 else 7]]$id == "Class"), setdiff(seq_len(nrow(outputs_list[[if (mode == "Neg") 8 else 7]])), which(outputs_list[[if (mode == "Neg") 8 else 7]]$id == "Class"))),]
@@ -609,6 +608,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
       } else {
         outputs_list[[7]] <- md
       }
+    
     if (test_type == "t.test") {
       names(outputs_list) <- c(
         paste0(mode, ".ttest.metab"),
@@ -619,8 +619,9 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
         paste0(mode, ".SampleView"),
         "metadata"
       )
+
       if (!is.null(samples_to_drop_post_norm)) {
-        names(outputs_list) <- c(names(outputs_list), paste0(mode, ".total.normalized.data"))
+        names(outputs_list) <- c(na.omit(names(outputs_list)), paste0(mode, ".total.normalized.data"))
       }
     } 
     if (test_type %in% c("anova", "lm", "lme")) {
@@ -634,7 +635,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
         "metadata"
       )
       if (!is.null(samples_to_drop_post_norm)) {
-        names(outputs_list) <- c(names(outputs_list), paste0(mode, ".total.normalized.data"))
+        names(outputs_list) <- c(na.omit(names(outputs_list)), paste0(mode, ".total.normalized.data"))
       }
     }
     if (test_type == "nostats") {
@@ -648,7 +649,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
         "metadata"
       )
       if (!is.null(samples_to_drop_post_norm)) {
-        names(outputs_list) <- c(names(outputs_list), paste0(mode, ".total.normalized.data"))
+        names(outputs_list) <- c(na.omit(names(outputs_list)), paste0(mode, ".total.normalized.data"))
       }
     }
   } else {
@@ -662,7 +663,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
         paste0(mode, ".SampleView")
       )
       if (!is.null(samples_to_drop_post_norm)) {
-        names(outputs_list) <- c(names(outputs_list), paste0(mode, ".total.normalized.data"))
+        names(outputs_list) <- c(na.omit(names(outputs_list)), paste0(mode, ".total.normalized.data"))
       }
     }
     if (test_type %in% c("anova", "lm", "lme")) {
@@ -675,7 +676,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
         paste0(mode, ".SampleView")
       )
       if (!is.null(samples_to_drop_post_norm)) {
-        names(outputs_list) <- c(names(outputs_list), paste0(mode, ".total.normalized.data"))
+        names(outputs_list) <- c(na.omit(names(outputs_list)), paste0(mode, ".total.normalized.data"))
       }
     }
     if (test_type == "nostats") {
@@ -688,7 +689,7 @@ SECIM_Metabolomics <-function(dataset,peakdata,num_meta,original_data,contrast_v
         paste0(mode, ".SampleView")
       )
       if (!is.null(samples_to_drop_post_norm)) {
-        names(outputs_list) <- c(names(outputs_list), paste0(mode, ".total.normalized.data"))
+        names(outputs_list) <- c(na.omit(names(outputs_list)), paste0(mode, ".total.normalized.data"))
       }
     }
   }
