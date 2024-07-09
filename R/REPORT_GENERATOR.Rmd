@@ -1525,6 +1525,12 @@ normalized_int <- mutate_all(normalized_int, function(x) as.numeric(as.character
 #
 rownames(normalized_int) <- substr(rownames(normalized_int), 1, 40)
 
+# Fix the column names to match the row names of sidecols
+matching_indices <- match(rownames(sidecols), colnames(normalized_int))
+
+# Reorder columns in normalized_int to match the sidecols row order
+normalized_int <- normalized_int[, matching_indices, drop = FALSE]
+
 if(nrow(normalized_int)>1){
   if(test_type=="nostats"){
     hm <-   heatmaply(plot_method = "plotly",normalized_int,show_dendrogram = FALSE,showticklabels=c(FALSE, TRUE),scale="row",
