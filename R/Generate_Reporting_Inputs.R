@@ -155,8 +155,14 @@ if(mzmine_version==2){
   #Remove any rows with "Complex" in the fourth column
   peakdata <- filter(peakdata,!grepl("Complex",compound))
   #If there is a :[0-9]\+ after the compound name in row identity (main ID), remove it so KEGG ID can be added
-  peakdata$compound <- gsub(":\\s*\\d+\\.?\\d*", "", peakdata$compound)
-  }
+  # Identify rows to be excluded
+
+  exclude_rows <- grepl("^LYSO", peakdata$compound)
+  
+  # Apply gsub to rows that do not start with "LYSO"
+  peakdata$compound[!exclude_rows] <- gsub(":\\s*\\d+\\.?\\d*", "", peakdata$compound[!exclude_rows])
+}
+
 #################################################
 #################END#############################
 #################################################
@@ -198,8 +204,8 @@ name_mapping <- sapply(metadata$Sample.Name, function(sample_name) {
   } else if(any(grepl("^[0-9]+_", metadata$Sample.Name))){ #If the sample names start with a number, look for the colnames to start with the sample name (bc it already includes num)
     matched_colname <- grep(paste0("^", sample_name, "(_|$)"), colnames(peakdata), value = TRUE)
   } else { #If the sample names don't start with a number, look for a number, then the sample name in colnames (bc the sample name doesn't include the num)
-    matched_colname <- grep(paste0("^[0-9]+","_", sample_name, "_"), colnames(peakdata), value = TRUE)
-    #matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE) #Temporary for Dudeja bc those sample names are dumb
+    #matched_colname <- grep(paste0("^[0-9]+","_", sample_name, "_"), colnames(peakdata), value = TRUE)
+    matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE) #Temporary for Dudeja bc those sample names are dumb
     }
   if (length(matched_colname) == 1) {
     return(matched_colname)
@@ -361,7 +367,11 @@ if(mzmine_version==2){
   #Remove any rows with "Complex" in the fourth column
   peakdata <- filter(peakdata,!grepl("Complex",compound))
   #If there is a :[0-9]\+ after the compound name in row identity (main ID), remove it so KEGG ID can be added
-  peakdata$compound <- gsub(":\\s*\\d+\\.?\\d*", "", peakdata$compound)
+  # Identify rows to be excluded
+  exclude_rows <- grepl("^LYSO", peakdata$compound)
+  
+  # Apply gsub to rows that do not start with "LYSO"
+  peakdata$compound[!exclude_rows] <- gsub(":\\s*\\d+\\.?\\d*", "", peakdata$compound[!exclude_rows])
     }
 #################################################
 #################END#############################
@@ -399,8 +409,8 @@ name_mapping <- sapply(metadata$Sample.Name, function(sample_name) {
   } else if(any(grepl("^[0-9]+_", metadata$Sample.Name))){ #If the sample names start with a number, look for the colnames to start with the sample name (bc it already includes num)
     matched_colname <- grep(paste0("^", sample_name, "(_|$)"), colnames(peakdata), value = TRUE)
   } else { #If the sample names don't start with a number, look for a number, then the sample name in colnames (bc the sample name doesn't include the num)
-    matched_colname <- grep(paste0("^[0-9]+","_", sample_name, "_"), colnames(peakdata), value = TRUE)
-    #matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE) #Temporary for Dudeja bc those sample names are dumb
+    #matched_colname <- grep(paste0("^[0-9]+","_", sample_name, "_"), colnames(peakdata), value = TRUE)
+    matched_colname <- grep(paste0("^", sample_name, "_"), colnames(peakdata), value = TRUE) #Temporary for Dudeja bc those sample names are dumb
   }
   if (length(matched_colname) == 1) {
     return(matched_colname)
