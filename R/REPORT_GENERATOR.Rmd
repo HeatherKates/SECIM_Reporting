@@ -1332,80 +1332,30 @@ htmltools::tagList(boxplotlist)
 
 ```{r}
 if(test_type == "nostats"){
-  html_text <- "Per-contrast boxplot of any of the top changed metabolites across sample class</span><br><br>"
+  html_text <- "Per-contrast violin plo of any of the top changed metabolites across sample class</span><br><br>"
 } else {
-  html_text <- "Per-contrast boxplot of any of the top significantly changed metabolites across sample class</span><br><br>"
+  html_text <- "Per-contrast violin plo of any of the top significantly changed metabolites across sample class</span><br><br>"
 }
 htmltools::HTML(html_text)
 ```
 
 ```{r violin}
 violinplotlist = list()
-for (i in c(1:length(contrasts))){
+for (i in c(1:length(contrasts))) {
+my.df <- my.df %>%
+  mutate_at(vars(4:ncol(.)), ~ as.numeric(as.character(.))) %>%
+  mutate_at(vars(4:ncol(.)), ~ round(., 2))
 
-  # Manual changes needed for where metabolite data begins and for groupvar
-  ## Order results by p.value values
-  if(p_type=="adj.p.value"){
-    top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% mutate(ID_confidence = factor(ID_confidence, levels = c("High", "Low", ""), ordered = TRUE)) %>%
-                                arrange(ID_confidence,adj.p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
-                              Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]])  %>% mutate(ID_confidence = factor(ID_confidence, levels = c("High", "Low", ""), ordered = TRUE)) %>%
-                                arrange(ID_confidence,adj.p.value)  %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
-  }
-  if(p_type=="p.value"){
-    top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% mutate(ID_confidence = factor(ID_confidence, levels = c("High", "Low", ""), ordered = TRUE)) %>%
-                                arrange(ID_confidence,p.value) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
-                              Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]])  %>% mutate(ID_confidence = factor(ID_confidence, levels = c("High", "Low", ""), ordered = TRUE)) %>%
-                                arrange(ID_confidence,p.value)  %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
-  }
-  if(p_type=="log2FC"){
-    top20_sigOE_genes <- paste(Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(desc(log2FC)) %>% slice_head(n=20) %>% select(row.mode) %>% unlist(),
-                              Client_Data_Download[["report_results"]] %>% filter(contrast==contrast[[i]]) %>% filter(compound %in% sig_peaks[[contrasts[[i]]]]) %>% arrange(desc(log2FC)) %>% slice_head(n=20) %>% select(compound) %>% unlist(),sep="_")
-  }
-
-  # Combine - CHANGE where n:nrow begins depends on...number of metadata? 
-  normalized_int <- rbind(
-    Client_Data_Download[["Pos.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Pos.normalized.data"]]),3:(num_samples+2)],
-    Client_Data_Download[["Neg.normalized.data"]][num_of_metadata:nrow(Client_Data_Download[["Neg.normalized.data"]]),3:(num_samples+2)]
-  )
-
-  rownames(normalized_int) <- c(paste(Client_Data_Download[["Pos.normalized.data"]]$row.ID,Client_Data_Download[["Pos.normalized.data"]]$mode,Client_Data_Download[["Pos.normalized.data"]]$compound,sep="_")[-c(1:(num_of_metadata-1))],paste(Client_Data_Download[["Neg.normalized.data"]]$row.ID,Client_Data_Download[["Neg.normalized.data"]]$mode,Client_Data_Download[["Neg.normalized.data"]]$compound,sep="_")[-c(1:(num_of_metadata-1))])
-
-  normalized_int <- filter(normalized_int, rownames(normalized_int) %in% top20_sigOE_genes)
-
-  rownames(normalized_int) <- gsub("^\\d+_(Pos|Neg)_", "", rownames(normalized_int))
-
-  # The boxplot data frame is samples in rows metabs in cols, the normalized intensities for each sample preceded by the name and any metadata for that sample
-  my.df <- t(normalized_int)
-
-  # Truncate overly long colnames
-  colnames(my.df) <- substr(colnames(my.df), 1, 40)
-
-  # Add empty data columns to df if < 20 metabolites were significantly changed for a contrast
-  if(ncol(my.df) < 20){
-    add <- 20 - ncol(my.df)
-    add.df <- data.frame(matrix(ncol = add, nrow = nrow(my.df)))
-    my.df <- cbind(my.df, add.df)
-  }
-
-  # Add sample names and metadata to peak data
-  my.df <- merge(Client_Data_Download[["metadata"]], my.df, by=0) %>% mutate_if(is.numeric, round, digits=4)
-  
-  # OPTIONAL To control the order of the x-axis . manual change arrange factor
-  if(length(class_order) > 1){
-    xform <- list(categoryorder = "array", categoryarray = class_order)
-  }
-
-  num = ncol(my.df) - 20 + 1
-  # Create the update drop-down menus
   updatemenus <- list(
     list(direction = "down",
          x = -.3,
          y = 0.9,
          buttons = lapply(0:19, function(idx) {
+           visibility <- rep(FALSE, 20)
+           visibility[idx + 1] <- TRUE
            list(
-             method = "update",
-             args = list(list(visible = as.logical(1:20 == idx + 1)),
-                         list(yaxis = list(title = "Peak intensity"))),
+             method = "restyle",
+             args = list("visible", visibility),
              label = colnames(my.df)[num + idx]
            )
          })
@@ -1413,45 +1363,71 @@ for (i in c(1:length(contrasts))){
   )
 
   m <- list(l = 220, r = 50, b = 50, t = 50)
-  plot <- plot_ly(data=my.df, x = boxplot_var, color = ~Class, yaxis = list(title = "Peak intensity"))
 
-  if(length(class_order) > 1){
-    plot <- plot %>% layout(xaxis = xform)
-  }
+  # Create plotly object with all traces
+  plot <- plot_ly()
 
+  # Add each trace to the plot
   for (j in 0:19) {
     plot <- plot %>%
       add_trace(
         type = 'violin',
-        x = boxplot_var,
-        y = my.df[,num + j],
-        visible = ifelse(j == 0, TRUE, FALSE),
+        x = ~my.df$Class,
+        y = my.df[, num + j],
         points = "all",
         jitter = 0.3,
         pointpos = 0,
         hoverinfo = 'text',
-        text = ~paste('Sample:', my.df$Sample.name)
+        text = ~paste('Sample:', my.df$Sample.name),
+        visible = ifelse(j == 0, TRUE, FALSE),  # Make only the first trace visible initially
+        name = colnames(my.df)[num + j]
       )
   }
 
+  # Create update menus
+  updatemenus <- list(
+    list(
+      buttons = lapply(0:19, function(idx) {
+        visibility <- rep(FALSE, 20)
+        visibility[idx + 1] <- TRUE
+        list(
+          method = "restyle",
+          args = list("visible", visibility),
+          label = colnames(my.df)[num + idx]
+        )
+      }),
+      direction = "down",
+      x = -0.1,
+      y = 1.2
+    )
+  )
+
+  # Final plot with update menus
   plot <- plot %>%
     layout(
       updatemenus = updatemenus,
-      title = paste("Violin plot of peak intensities across ", Grouping_Variable),
-      showlegend = FALSE, yaxis = list(title = "Peak intensity")
-    ) %>%
-    add_annotations(
-      x = 'center', y = 1.05, text = paste("Top metabolites ", contrasts[[i]], sep=""),
-      xref = "paper", yref = "paper",
-      showarrow = FALSE
-    ) %>%
-    layout(autosize = F, width = 800, height = 400, margin = m)
+      title = list(
+        text = "Violin plot of peak intensities across Class",
+        x = 0.7,  # Adjust this value between 0 and 1 to move the title
+        xanchor = "center"  # Adjust anchor point based on x value
+      ),
+      showlegend = FALSE,
+      yaxis = list(
+        title = "Peak intensity",
+        showticklabels = TRUE,
+        autorange = TRUE,  # Ensure autorange is set to handle both positive and negative values
+        tickmode = "linear",
+        dtick = 0.5,  # Adjust this value to control tick intervals
+        tickformat = ".2f"  # Round the tick labels to 2 decimal places
+      ),
+      xaxis = list(title = "Class")  # Change x-axis title to "Class"
+    )
 
   violinplotlist[[i]] = plot
 }
 
-htmltools::tagList(violinplotlist)
-
+#htmltools::tagList(violinplotlist)
+plot
 ```
 
 ## Heatmaps of changed metabolites
@@ -1547,7 +1523,7 @@ hm <-   heatmaply(plot_method = "plotly",normalized_int,show_dendrogram = FALSE,
           colors=c("darkblue","white","darkred"),
           #Make this the annotation bar
           col_side_colors = sidecols,xlab = "Samples",
-  ylab = "Metabolites", 
+  ylab = "", 
   main = paste("Peak heights (scaled) for most significantly changed metabolites\n",contrasts[[i]],sep=""),margins=c(0,0,60,0),fontsize_row = 12,cex.main=1,labRow=gsub("\\d+_\\w+_","",(rownames(normalized_int))),side_color_colorbar_len = .5)
 
 heatmaplist[[i]]=hm
