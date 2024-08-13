@@ -784,7 +784,6 @@ tryCatch({
   # Print a custom message or handle the error differently
   cat("No overlap between significantly enriched compound IDs and KEGG database or image could not be displayed.")
 })
-cat("![MSEA results for significantly changed compounds](", image_path, ")", sep="")
 ```
 
 ```{r}
