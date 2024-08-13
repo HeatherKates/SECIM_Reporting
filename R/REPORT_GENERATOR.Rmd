@@ -772,7 +772,7 @@ if (!is.null(result)) {
 
 ```{r, echo=FALSE, results='asis'}
 tryCatch({
-  image_path <- paste0("/blue/timgarrett/hkates/SECIM_Reporting/", client, "MSEA.", "pngdpi72.png")
+  image_path <- paste0("/blue/timgarrett/hkates/SECIM_Reporting/", client, "MSEA.", "pngdpi300.png")
   
   # Attempt to verify if the file exists before trying to display it
   if (!file.exists(image_path)) {
@@ -784,6 +784,7 @@ tryCatch({
   # Print a custom message or handle the error differently
   cat("No overlap between significantly enriched compound IDs and KEGG database or image could not be displayed.")
 })
+cat("![MSEA results for significantly changed compounds](", image_path, ")", sep="")
 ```
 
 ```{r}
